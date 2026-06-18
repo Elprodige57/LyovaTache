@@ -1,0 +1,173 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import type { Board, Member } from '../types';
+
+interface SettingsPanelProps {
+  boards?: Board[];
+  currentMember?: Member | null;
+  currentMemberId?: string;
+}
+
+export function SettingsPanel({ boards = [], currentMember = null, currentMemberId }: SettingsPanelProps) {
+  const app = useApp();
+  const [tab, setTab] = useState<'general' | 'notifications' | 'account'>('general');
+  const [workspaceName, setWorkspaceName] = useState('Lyova Tech');
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [slackNotif, setSlackNotif] = useState(false);
+  const [dailyDigest, setDailyDigest] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = () => {
+    setSaving(true);
+    setTimeout(() => setSaving(false), 500);
+  };
+
+  const tabs = [
+    { id: 'general' as const, label: 'Général', icon: 'M12 20h9M12 4h9M2 12h9M2 20h9M2 4h9' },
+    { id: 'notifications' as const, label: 'Notifications', icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9|M13.7 21a2 2 0 0 1-3.4 0' },
+    { id: 'account' as const, label: 'Compte', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+  ];
+
+  return (
+    <>
+      <div onClick={app.toggleSettings} style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 50, animation: 'lyFade .15s ease' }} />
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, maxWidth: '94vw',
+        background: 'var(--panel)', zIndex: 51, boxShadow: 'var(--shadow-md)',
+        display: 'flex', flexDirection: 'column',
+        animation: 'lySlide .22s cubic-bezier(.2,.8,.2,1)',
+        fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+      }}>
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 11, flexShrink: 0 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--ink)' }}>Paramètres</div>
+            <div style={{ fontSize: 11.5, color: 'var(--sub2)' }}>Personnalisez votre espace</div>
+          </div>
+          <div onClick={app.toggleSettings} style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--sub)', transition: 'background .1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, padding: '12px 20px 0', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+          {tabs.map(t => {
+            const active = tab === t.id;
+            return (
+              <div key={t.id} onClick={() => setTab(t.id)} style={{ padding: '8px 14px', fontSize: 13, fontWeight: active ? 700 : 600, color: active ? 'var(--accent-ink)' : 'var(--sub2)', borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all .1s' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  {t.icon.split('|').map((d, i) => <path key={i} d={d} />)}
+                </svg>
+                {t.label}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          {tab === 'general' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Espace de travail</div>
+                <input value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} style={{ width: '100%', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Bureau préféré</div>
+                <div style={{ fontSize: 12, color: 'var(--sub2)', marginBottom: 8 }}>À l'ouverture de l'application, vous arrivez directement sur ce Bureau.</div>
+                <select
+                  value={currentMember?.preferred_board_id ?? ''}
+                  onChange={e => { if (currentMemberId) app.setPreferredBoard(currentMemberId, e.target.value || null); }}
+                  style={{ width: '100%', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", cursor: 'pointer' }}
+                >
+                  <option value="">Aucun (tableau de bord)</option>
+                  {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Apparence</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div onClick={app.toggleTheme} style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1px solid ${app.theme === 'light' ? 'var(--accent)' : 'var(--line2)'}`, background: app.theme === 'light' ? 'var(--accent-soft)' : 'var(--panel)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2"><circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" /></svg>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Clair</span>
+                  </div>
+                  <div onClick={app.toggleTheme} style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1px solid ${app.theme === 'dark' ? 'var(--accent)' : 'var(--line2)'}`, background: app.theme === 'dark' ? 'var(--accent-soft)' : 'var(--panel)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Sombre</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Densité</div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div onClick={app.toggleDensity} style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1px solid ${app.density === 'comfortable' ? 'var(--accent)' : 'var(--line2)'}`, background: app.density === 'comfortable' ? 'var(--accent-soft)' : 'var(--panel)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>☁️</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Confortable</span>
+                  </div>
+                  <div onClick={app.toggleDensity} style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1px solid ${app.density === 'compact' ? 'var(--accent)' : 'var(--line2)'}`, background: app.density === 'compact' ? 'var(--accent-soft)' : 'var(--panel)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>📦</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Compact</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {tab === 'notifications' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Toggle label="Notifications par email" desc="Recevoir un email pour chaque événement important" value={emailNotif} onChange={setEmailNotif} />
+              <Toggle label="Notifications Slack" desc="Envoyer les alertes vers un canal Slack" value={slackNotif} onChange={setSlackNotif} />
+              <Toggle label="Résumé quotidien" desc="Un email récapitulatif chaque matin à 8h" value={dailyDigest} onChange={setDailyDigest} />
+            </div>
+          )}
+          {tab === 'account' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Profil</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--panel)' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>CR</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Camille Royer</div>
+                    <div style={{ fontSize: 12, color: 'var(--sub2)' }}>Propriétaire · camille@lyova.tech</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Plan</div>
+                <div style={{ padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--accent-soft)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-ink)' }}>Plan Équipe</div>
+                  <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 2 }}>5 membres · Automations · Documents</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ borderTop: '1px solid var(--line)', padding: '14px 20px', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={app.toggleSettings} style={{ background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+          <button onClick={handleSave} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{saving ? '…' : 'Enregistrer'}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Toggle({ label, desc, value, onChange }: { label: string; desc: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--panel)' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{label}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--sub2)', marginTop: 2 }}>{desc}</div>
+      </div>
+      <div onClick={() => onChange(!value)} style={{ width: 42, height: 24, borderRadius: 13, background: value ? 'var(--accent)' : 'var(--line2)', position: 'relative', cursor: 'pointer', transition: 'background .15s', flexShrink: 0 }}>
+        <div style={{ position: 'absolute', top: 2.5, left: value ? 20 : 2.5, width: 19, height: 19, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)', transition: 'left .15s' }} />
+      </div>
+    </div>
+  );
+}

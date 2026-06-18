@@ -1,0 +1,2 @@
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_done boolean NOT NULL DEFAULT false;
