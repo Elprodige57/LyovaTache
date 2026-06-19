@@ -156,6 +156,7 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
         )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <OfflineBadge />
           {/* Board members */}
           {isBoard && members.length > 0 && (
             <div style={{ display: 'flex' }}>
@@ -303,6 +304,24 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
         </>
       )}
     </header>
+  );
+}
+
+function OfflineBadge() {
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  if (online) return null;
+  return (
+    <div title="Hors-ligne — données en cache, vos modifications se synchroniseront au retour du réseau" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#b45309', background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 7, padding: '5px 10px' }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
+      Hors-ligne
+    </div>
   );
 }
 

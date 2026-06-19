@@ -1,14 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadCache, saveCache } from '../lib/cache';
 import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document } from '../types';
 
 export function useWorkspace(refreshKey = 0) {
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspace, setWorkspace] = useState<Workspace | null>(() => loadCache<Workspace | null>('workspace', null));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.from('workspaces').select('*').limit(1).single()
-      .then(({ data }) => { setWorkspace(data); setLoading(false); });
+      .then(({ data }) => { if (data) { setWorkspace(data); saveCache('workspace', data); } setLoading(false); });
   }, [refreshKey]);
 
   return { workspace, loading };
@@ -24,8 +25,9 @@ export function useMembers(workspaceId: string | undefined, refreshKey = 0) {
 
   useEffect(() => {
     if (!workspaceId) return;
+    setMembers(loadCache<Member[]>('members_' + workspaceId, []));
     supabase.from('members').select('*').eq('workspace_id', workspaceId).order('created_at')
-      .then(({ data }) => setMembers(data || []));
+      .then(({ data }) => { if (data) { setMembers(data); saveCache('members_' + workspaceId, data); } });
   }, [workspaceId, refreshKey]);
 
   return members;
@@ -36,8 +38,9 @@ export function useFolders(workspaceId: string | undefined, refreshKey = 0) {
 
   const reload = useCallback(() => {
     if (!workspaceId) return;
+    setFolders(loadCache<Folder[]>('folders_' + workspaceId, []));
     supabase.from('folders').select('*, boards(*)').eq('workspace_id', workspaceId).order('position')
-      .then(({ data }) => setFolders(data || []));
+      .then(({ data }) => { if (data) { setFolders(data); saveCache('folders_' + workspaceId, data); } });
   }, [workspaceId]);
 
   useEffect(() => { reload(); }, [reload, refreshKey]);
@@ -50,8 +53,9 @@ export function useLabels(workspaceId: string | undefined) {
 
   useEffect(() => {
     if (!workspaceId) return;
+    setLabels(loadCache<Label[]>('labels_' + workspaceId, []));
     supabase.from('labels').select('*').eq('workspace_id', workspaceId)
-      .then(({ data }) => setLabels(data || []));
+      .then(({ data }) => { if (data) { setLabels(data); saveCache('labels_' + workspaceId, data); } });
   }, [workspaceId]);
 
   return labels;
@@ -63,6 +67,8 @@ export function useBoard(boardId: string | null, refreshKey = 0) {
 
   const reload = useCallback(() => {
     if (!boardId) return;
+    const cached = loadCache<Board | null>('board_' + boardId, null);
+    if (cached) setBoard(cached);
     setLoading(true);
     supabase.from('boards').select(`
       *,
@@ -72,7 +78,9 @@ export function useBoard(boardId: string | null, refreshKey = 0) {
       .then(({ data }) => {
         if (data) {
           const members = (data.board_members || []).map((bm: { members: Member }) => bm.members).filter(Boolean);
-          setBoard({ ...data, members });
+          const b = { ...data, members };
+          setBoard(b);
+          saveCache('board_' + boardId, b);
         }
         setLoading(false);
       });
@@ -89,9 +97,10 @@ export function useColumns(boardId: string | null, refreshKey = 0) {
 
   const reload = useCallback(() => {
     if (!boardId) return;
+    setColumns(loadCache<Column[]>('columns_' + boardId, []));
     setLoading(true);
     supabase.from('columns').select('*').eq('board_id', boardId).order('position')
-      .then(({ data }) => { setColumns(data || []); setLoading(false); });
+      .then(({ data }) => { if (data) { setColumns(data); saveCache('columns_' + boardId, data); } setLoading(false); });
   }, [boardId]);
 
   useEffect(() => { reload(); }, [reload, refreshKey]);
@@ -105,6 +114,7 @@ export function useTasks(boardId: string | null, refreshKey = 0) {
 
   const reload = useCallback(() => {
     if (!boardId) return;
+    setTasks(loadCache<Task[]>('tasks_' + boardId, []));
     setLoading(true);
     supabase.from('tasks').select(`
       *,
@@ -121,6 +131,7 @@ export function useTasks(boardId: string | null, refreshKey = 0) {
             checklist_items: (t.checklist_items || []).sort((a: { position: number }, b: { position: number }) => a.position - b.position),
           }));
           setTasks(enriched);
+          saveCache('tasks_' + boardId, enriched);
         }
         setLoading(false);
       });
@@ -349,6 +360,7 @@ export function useAllTasks(boardIds: string[], refreshKey = 0) {
 
   const reload = useCallback(() => {
     if (boardIds.length === 0) { setTasks([]); return; }
+    setTasks(loadCache<Task[]>('alltasks_' + key, []));
     supabase.from('tasks').select(`
       *,
       task_labels(label_id, labels(*)),
@@ -357,12 +369,14 @@ export function useAllTasks(boardIds: string[], refreshKey = 0) {
     `).in('board_id', boardIds).order('position')
       .then(({ data }) => {
         if (data) {
-          setTasks(data.map((t) => ({
+          const enriched = data.map((t) => ({
             ...t,
             labels: (t.task_labels || []).map((tl: { labels: Label }) => tl.labels).filter(Boolean),
             assignees: (t.task_assignees || []).map((ta: { members: Member }) => ta.members).filter(Boolean),
             checklist_items: (t.checklist_items || []).sort((a: { position: number }, b: { position: number }) => a.position - b.position),
-          })));
+          }));
+          setTasks(enriched);
+          saveCache('alltasks_' + key, enriched);
         }
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
