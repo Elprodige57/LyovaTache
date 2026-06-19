@@ -1863,6 +1863,517 @@ type Density = 'comfortable' | 'compact';
 
 ---
 
+## COMMENT L'APPLICATION S'OUVRE & SE LANCE
+
+### 1. Architecture du Démarrage (Startup Flow)
+
+**Quand tu tapes `npm run dev`:**
+
+```
+Terminal                  Vite Dev Server              Browser
+   │                            │                         │
+   │ npm run dev                │                         │
+   ├─────────────────────────>  │                         │
+   │                      Démarre le serveur              │
+   │                      sur http://localhost:5173       │
+   │                            │ (HMR activé)            │
+   │                            │                         │
+   │ Ouvre navigateur           │                         │
+   │                            ├─────────────────────>  │
+   │                            │ GET /index.html         │
+   │                            │<─────────────────────  │
+   │                            │ Servir HTML             │
+   │                            │                         │
+   │                            │ GET /src/main.tsx.js    │
+   │                            │<─────────────────────  │
+   │                            │ Transpiler + servir     │
+   │                            │                         │
+   │                            │ GET /src/App.tsx.js     │
+   │                            │<─────────────────────  │
+   │                            │ ... tous les imports    │
+   │                            │                         │
+   │                      App démarre!                    │
+   │                            │                         │
+```
+
+### 2. Point d'Entrée: index.html
+
+**Fichier: `index.html`**
+
+```html
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/lyova.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lyova Tâches</title>
+  </head>
+  <body>
+    <!-- ← Root element où React va injecter l'app -->
+    <div id="root"></div>
+    
+    <!-- ← Script qui lance tout -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+**Ce qui se passe:**
+1. HTML charge dans le navigateur
+2. `<div id="root">` est vide (attendant React)
+3. `<script src="/src/main.tsx">` démarre le processus React
+
+### 3. Point d'Entrée React: main.tsx
+
+**Fichier: `src/main.tsx`**
+
+```typescript
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+
+// ← Changer le titre du navigateur
+document.title = 'Lyova Tâches';
+
+// ← Créer root React et render App
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>  {/* ← Mode strict pour détecte erreurs */}
+    <App />     {/* ← Composant principal */}
+  </StrictMode>
+);
+```
+
+**Timeline:**
+1. Import React + App + CSS
+2. `document.title = 'Lyova Tâches'` → onglet du navigateur dit "Lyova Tâches"
+3. `createRoot(...)` → Créer racine React
+4. `.render(<App />)` → Monter App dans le DOM
+
+### 4. App Principal: src/App.tsx
+
+**Le composant qui gère TOUT:**
+
+```typescript
+export default function App() {
+  // ÉTAPE 1: Check si l'utilisateur est authentifié
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [guest, setGuest] = useState(() => 
+    localStorage.getItem('lyova_guest') === '1'
+  );
+
+  // ÉTAPE 2: Fetch session from Supabase
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);  // null ou Session object
+    });
+  }, []);
+
+  // ÉTAPE 3: Écouter changements d'auth (login/logout)
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // ÉTAPE 4: Loading state
+  if (!guest && session === undefined) {
+    return <div className="flex items-center justify-center h-screen">Chargement...</div>;
+  }
+
+  // ÉTAPE 5: Not authenticated (et pas en guest mode)
+  if (!guest && !session) {
+    return <LoginScreen onGuest={() => {
+      localStorage.setItem('lyova_guest', '1');
+      setGuest(true);
+    }} />;
+  }
+
+  // ÉTAPE 6: Authentifié ou Guest mode → Charger l'app complète
+  return <AppContent session={session} />;
+}
+
+function AppContent({ session }: { session: Session | null }) {
+  // ← C'est ici que toute l'app vit!
+  return (
+    <AppProvider session={session}>
+      <div className="flex h-screen bg-var(--bg) text-var(--ink)">
+        <Sidebar />
+        <main className="flex-1 flex flex-col">
+          <Header />
+          <div className="flex-1 overflow-auto">
+            {/* Routes basées sur le screen courant */}
+            {/* Kanban / Agenda / Documents / Automations etc */}
+          </div>
+        </main>
+      </div>
+    </AppProvider>
+  );
+}
+```
+
+**Flux d'initialisation:**
+```
+App() monte
+  ↓
+Check session Supabase
+  ↓
+session === undefined? → Montrer <Loading />
+  ↓
+session === null && !guest? → Montrer <LoginScreen />
+  ↓
+session || guest? → Montrer <AppContent /> ← APP COMPLÈTE!
+  ↓
+AppProvider initialise AppContext (100+ functions)
+  ↓
+useData hooks chargent toutes les données
+  ↓
+Composants renderent
+  ↓
+À LA SECONDE, tu vois: Dashboard / Kanban / etc!
+```
+
+### 5. Configuration Vite
+
+**Fichier: `vite.config.ts`**
+
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+
+export default defineConfig({
+  plugins: [
+    // ← Plugin React: transforme .tsx en .js
+    react(),
+    
+    // ← Plugin PWA: crée une Progressive Web App
+    VitePWA({
+      registerType: 'autoUpdate',  // ← Auto-update quand nouveau build
+      includeAssets: ['lyova.svg'],
+      
+      // ← Manifest: décrire l'app
+      manifest: {
+        name: 'Lyova Tâches',
+        short_name: 'Lyova',
+        description: 'Gestion de tâches collaborative',
+        lang: 'fr',
+        theme_color: '#5b50e8',
+        background_color: '#0c0c12',
+        
+        // ← display: 'standalone' = s'ouvre COMME une app native
+        // Pas de barre d'adresse du navigateur!
+        display: 'standalone',
+        
+        orientation: 'any',        // ← Portrait ou Landscape
+        start_url: '/',            // ← URL au lancement
+        
+        // ← Icons (pour affichage sur Bureau/Mobile)
+        icons: [
+          { 
+            src: '/lyova.svg', 
+            sizes: 'any', 
+            type: 'image/svg+xml', 
+            purpose: 'any' 
+          },
+          { 
+            src: '/lyova.svg', 
+            sizes: 'any', 
+            type: 'image/svg+xml', 
+            purpose: 'maskable'  // ← Adaptive icons (Android)
+          },
+        ],
+      },
+      
+      // ← Service Worker: offline support
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,woff,woff2}'],
+        navigateFallback: '/index.html',  // ← Si offline, ouvrir l'app
+      },
+    }),
+  ],
+});
+```
+
+**Qu'est-ce que PWA (Progressive Web App)?**
+
+✅ **Installable:** "Ajouter à l'écran d'accueil" sur Mobile/Desktop
+✅ **Offline:** Cache les fichiers, marche sans internet
+✅ **Standalone:** S'ouvre COMME une app native, pas dans navigateur
+✅ **Auto-update:** Nouvelle version quand tu redéploie
+
+### 6. Service Worker: Le "Magic" du PWA
+
+**Qu'est-ce que c'est?**
+
+Un Service Worker est un script qui **vit entre ton app et le réseau**:
+
+```
+App ←→ Service Worker ←→ Réseau (Internet)
+                ↓
+           Cache (Offline)
+```
+
+**Quand tu ouvres l'app:**
+
+```
+PREMIÈRE VISITE:
+  App demande /index.html
+    → Service Worker pas encore en cache
+    → Récupère du réseau
+    → Sauvegarde en cache
+    → Donne à l'app
+    → Service Worker enregistré!
+
+DEUXIÈME VISITE (pas de réseau):
+  App demande /index.html
+    → Service Worker: "J'ai ça en cache!"
+    → Donne la version en cache
+    → App marche même sans internet!
+
+NOUVELLE VERSION DISPONIBLE:
+  Service Worker: "Il y a une nouvelle version en cache"
+    → Auto-télécharge en arrière-plan
+    → Next reload: nouvelle version!
+```
+
+### 7. CSS & Thème: Initialisation
+
+**Fichier: `src/index.css`**
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: white;
+  --panel: #f9fafb;
+  --ink: #111;
+  --accent: #5b50e8;
+  --line: #ddd;
+  /* ... 15+ autres variables ... */
+}
+
+[data-theme="dark"] {
+  --bg: #0f0f0f;
+  --panel: #1a1a1f;
+  --ink: #fff;
+  --accent: #7c3aed;
+  /* ... variables en mode dark ... */
+}
+```
+
+**Comment le thème s'applique:**
+
+```typescript
+// DANS APP CONTEXT
+useEffect(() => {
+  // Lire thème du localStorage (ou défaut = light)
+  const theme = localStorage.getItem('lyova_theme') || 'light';
+  
+  // Changer l'attribut HTML
+  document.documentElement.setAttribute('data-theme', theme);
+}, []);
+
+// Utilisation
+<div style={{ background: 'var(--bg)' }}>
+  {/* Fond blanc en light, noir en dark */}
+</div>
+```
+
+### 8. Initialisations Supplémentaires
+
+**Quand l'app démarre, ces choses se font AUSSI:**
+
+```typescript
+// DANS APP CONTEXT (AppProvider)
+const AppProvider = ({ children, session }) => {
+  // 1. Initialiser AppContext avec fonctions + état
+  const [state, setState] = useState({ screen: 'dashboard', ... });
+  
+  // 2. Charger les données utilisateur
+  const { members } = useMember(WORKSPACE_ID);
+  const { workspace } = useWorkspace(WORKSPACE_ID);
+  
+  // 3. Setup keyboard shortcuts
+  useEffect(() => {
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  
+  // 4. Setup localStorage watchers
+  useEffect(() => {
+    const theme = localStorage.getItem('lyova_theme');
+    if (theme) setState(s => ({ ...s, theme }));
+  }, []);
+  
+  // 5. Setup Supabase real-time subscriptions
+  useEffect(() => {
+    const sub = supabase
+      .from('tasks')
+      .on('*', payload => {
+        // Nouvelle tâche? Update le cache!
+        setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+      })
+      .subscribe();
+    
+    return () => sub.unsubscribe();
+  }, []);
+  
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+```
+
+### 9. Production Build
+
+**Quand tu fais `npm run build`:**
+
+```bash
+$ npm run build
+
+Vite v5.4.2 building for production...
+
+✓ 2583 modules transformed (Vite does magic)
+✓ Minified (comprimé)
+✓ PWA manifest registered
+✓ Service Worker created
+
+dist/
+├── index.html          (5 KB) ← Le fichier qu'on déploie
+├── assets/
+│   ├── main-ABC123.js  (150 KB) ← Tout le code minifié + bundled
+│   ├── style-XYZ789.css (25 KB) ← Tout le CSS combiné
+│   └── lyova-DEF456.svg (2 KB)
+└── sw.js               (50 KB) ← Service Worker PWA
+```
+
+**Qu'est-ce que Vite fait?**
+- ✅ Transforme `.tsx` → `.js`
+- ✅ Combine tous les imports
+- ✅ Minifie (compresse)
+- ✅ Code splitting (lazy loading)
+- ✅ PWA manifest + Service Worker
+- ✅ Hash des fichiers (cache busting)
+
+### 10. HMR: Hot Module Replacement (Magic de Vite!)
+
+**En dev mode (`npm run dev`), quand tu changes du code:**
+
+```
+1. Tu sauvegarde App.tsx
+   ↓
+2. Vite détecte le changement
+   ↓
+3. Envoie le nouveau module au navigateur (WebSocket)
+   ↓
+4. React re-rend SEULEMENT le composant changé
+   ↓
+5. État du composant RESTE LE MÊME! (pas de refresh)
+   ↓
+6. Navigateur met à jour en <100ms
+```
+
+**Comparé à refresh normal:**
+```
+❌ SANS HMR:
+  Sauvegarde → Refresh F5 → Page blanche → Re-télécharger 
+  → 500ms+, tu perds l'état
+
+✅ AVEC HMR (Vite):
+  Sauvegarde → Hot reload → État intact → Nouvel UI
+  → 50ms, super rapide!
+```
+
+### 11. Variables d'Environnement
+
+**Fichier: `.env.local` (git-ignored)**
+
+```
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...
+```
+
+**Accès dans le code:**
+
+```typescript
+// DANS src/lib/supabase.ts
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+```
+
+**Pourquoi `VITE_` prefix?**
+- Vite exclut les variables sans `VITE_` du bundle (sécurité!)
+- `import.meta.env` = variables injectées par Vite
+
+### 12. Tout Ensemble: Timeline Complète du Démarrage
+
+```
+0ms   - $ npm run dev
+        ↓
+5ms   - Vite démarre sur http://localhost:5173
+        ↓
+10ms  - Navigateur charge /index.html
+        ↓
+15ms  - HTML parse → <script src="/src/main.tsx"> trouvé
+        ↓
+20ms  - main.tsx chargé + transpilé
+        ↓
+25ms  - createRoot() + App() mount
+        ↓
+30ms  - App.tsx: Check session Supabase (async)
+        ↓
+40ms  - <Loading /> montré pendant qu'on attend Supabase
+        ↓
+100ms - Supabase répond: { session: null }
+        ↓
+105ms - App: Pas de session ET !guest → <LoginScreen /> montré
+        ↓
+150ms - User clique "Mode Invité"
+        ↓
+155ms - localStorage['lyova_guest'] = '1'
+        ↓
+160ms - Re-render App → <AppContent /> montré!
+        ↓
+165ms - AppProvider initialise AppContext
+        ↓
+170ms - useWorkspace() appelé
+        ↓
+175ms - useFolders() appelé
+        ↓
+180ms - useBoard() appelé
+        ↓
+185ms - useTasks() appelé
+        ↓
+200ms - Supabase responses arrivent
+        ↓
+205ms - setWorkspace(), setFolders(), setBoard(), setTasks()
+        ↓
+210ms - React re-render avec données
+        ↓
+215ms - Sidebar monté
+        ↓
+220ms - Header monté
+        ↓
+225ms - Kanban monté avec toutes les colonnes/tâches
+        ↓
+250ms - Keyboard shortcuts registered
+        ↓
+300ms - Service Worker registered (PWA ready!)
+        ↓
+500ms - TOUT EST CHARGÉ! 🎉 App complètement fonctionnelle
+```
+
+---
+
 ## DÉTAILS TECHNIQUES AVANCÉS
 
 ### 1. Gestion des Dépendances dans useEffect
