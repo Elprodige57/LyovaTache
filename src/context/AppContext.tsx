@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Screen, BoardView, Theme, Density, Task, Automation } from '../types';
 import * as api from '../hooks/useData';
+import { runOrQueue } from '../lib/syncQueue';
 
 interface AppState {
   screen: Screen;
@@ -183,7 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       taskOverrides: { ...s.taskOverrides, [taskId]: { ...(s.taskOverrides[taskId] || {}), column_id: newColumnId } }
     }));
-    api.moveTaskToColumn(taskId, newColumnId);
+    runOrQueue('moveTaskToColumn', [taskId, newColumnId]);
   }, []);
 
   const toggleAutomation = useCallback((automationId: string) => {
@@ -204,32 +205,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       checklistOverrides: { ...s.checklistOverrides, [itemId]: !currentValue }
     }));
-    api.updateChecklistItem(itemId, { is_done: !currentValue });
+    runOrQueue('updateChecklistItem', [itemId, { is_done: !currentValue }]);
   }, []);
 
   // CRUD
   const addTask = useCallback(async (columnId: string, boardId: string, title: string) => {
-    await api.createTask({ column_id: columnId, board_id: boardId, title });
+    await runOrQueue('createTask', [{ column_id: columnId, board_id: boardId, title }]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const patchTask = useCallback(async (taskId: string, updates: Partial<Task>) => {
-    await api.updateTask(taskId, updates);
+    await runOrQueue('updateTask', [taskId, updates]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const removeTask = useCallback(async (taskId: string) => {
-    await api.deleteTask(taskId);
+    await runOrQueue('deleteTask', [taskId]);
     setState(s => ({ ...s, selectedTaskId: null, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const addColumn = useCallback(async (boardId: string, name: string, color: string) => {
-    await api.createColumn(boardId, name, color, 99);
+    await runOrQueue('createColumn', [boardId, name, color, 99]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const postComment = useCallback(async (taskId: string, memberId: string, content: string) => {
-    await api.addComment(taskId, memberId, content);
+    await runOrQueue('addComment', [taskId, memberId, content]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
@@ -294,12 +295,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const archiveTask = useCallback(async (taskId: string) => {
-    await api.updateTask(taskId, { archived_at: new Date().toISOString() } as Partial<import('../types').Task>);
+    await runOrQueue('updateTask', [taskId, { archived_at: new Date().toISOString() }]);
     setState(s => ({ ...s, selectedTaskId: null, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const restoreTask = useCallback(async (taskId: string) => {
-    await api.updateTask(taskId, { archived_at: null } as Partial<import('../types').Task>);
+    await runOrQueue('updateTask', [taskId, { archived_at: null }]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
@@ -308,7 +309,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ...s,
       taskOverrides: { ...s.taskOverrides, [taskId]: { ...(s.taskOverrides[taskId] || {}), is_done: !isDone } }
     }));
-    await api.updateTask(taskId, { is_done: !isDone } as Partial<import('../types').Task>);
+    await runOrQueue('updateTask', [taskId, { is_done: !isDone }]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 

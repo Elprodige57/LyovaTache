@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { loginSchema, signupSchema } from '../lib/validation/auth';
+import { isRateLimited, resetRateLimit } from '../lib/rate-limit';
 
 export function LoginScreen({ onGuest }: { onGuest?: () => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -14,18 +16,31 @@ export function LoginScreen({ onGuest }: { onGuest?: () => void }) {
     setError(null);
     setInfo(null);
     const mail = email.trim();
-    if (!mail || !password) { setError('Email et mot de passe requis.'); return; }
-    if (mode === 'signup' && password.length < 6) { setError('Mot de passe : 6 caractères minimum.'); return; }
+
+    // Validation (Zod)
+    const parsed = mode === 'signin'
+      ? loginSchema.safeParse({ email: mail, password })
+      : signupSchema.safeParse({ name: name.trim(), email: mail, password });
+    if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? 'Champs invalides.'); return; }
+
+    // Anti-brute-force (5 essais / 15 min par email)
+    const rlKey = 'login:' + mail.toLowerCase();
+    if (isRateLimited(rlKey)) { setError('Trop de tentatives. Réessaie dans environ 15 minutes.'); return; }
+
     setLoading(true);
     try {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email: mail, password });
         if (error) setError(error.message);
+        else resetRateLimit(rlKey);
         // En cas de succès, App détecte la session via onAuthStateChange.
       } else {
         const { data, error } = await supabase.auth.signUp({ email: mail, password, options: { data: { name: name.trim() } } });
         if (error) setError(error.message);
-        else if (!data.session) setInfo('Compte créé. Confirme ton email pour te connecter (ou désactive « Confirm email » dans Supabase → Authentication).');
+        else {
+          resetRateLimit(rlKey);
+          if (!data.session) setInfo('Compte créé. Confirme ton email pour te connecter (ou désactive « Confirm email » dans Supabase → Authentication).');
+        }
         // Si la confirmation est désactivée, data.session existe et App bascule automatiquement.
       }
     } finally {

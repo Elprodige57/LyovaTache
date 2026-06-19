@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { LoginScreen } from './components/LoginScreen';
+import { flushQueue } from './lib/syncQueue';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -86,6 +87,14 @@ function AppContent({ session }: { session: Session | null }) {
       app.openBoard(pref);
     }
   }, [currentMember, allBoardIds, app]);
+
+  // Rejoue les écritures hors-ligne au retour du réseau (et au chargement)
+  useEffect(() => {
+    const doFlush = async () => { const n = await flushQueue(); if (n > 0) app.refreshAll(); };
+    window.addEventListener('online', doFlush);
+    if (navigator.onLine) doFlush();
+    return () => window.removeEventListener('online', doFlush);
+  }, [app]);
 
   const isBoard = app.screen === 'board';
 

@@ -12,6 +12,8 @@ export interface Member {
   initials: string;
   color: string;
   role: string;
+  email?: string | null;
+  auth_id?: string | null;
   preferred_board_id?: string | null;
   created_at: string;
 }

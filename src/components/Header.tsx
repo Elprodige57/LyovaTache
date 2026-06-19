@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { createMember, addBoardMember, createBoard, createFolder } from '../hooks/useData';
+import { getQueueSize, subscribeQueue } from '../lib/syncQueue';
 import type { Board, Member, Label, Folder } from '../types';
 
 interface HeaderProps {
@@ -157,6 +158,7 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           <OfflineBadge />
+          <PendingSyncBadge />
           {/* Board members */}
           {isBoard && members.length > 0 && (
             <div style={{ display: 'flex' }}>
@@ -321,6 +323,18 @@ function OfflineBadge() {
     <div title="Hors-ligne — données en cache, vos modifications se synchroniseront au retour du réseau" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#b45309', background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 7, padding: '5px 10px' }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
       Hors-ligne
+    </div>
+  );
+}
+
+function PendingSyncBadge() {
+  const [n, setN] = useState(getQueueSize());
+  useEffect(() => subscribeQueue(setN), []);
+  if (n <= 0) return null;
+  return (
+    <div title="Modifications faites hors-ligne, en attente de synchronisation" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--accent-ink)', background: 'var(--accent-soft)', border: '1px solid var(--accent)', borderRadius: 7, padding: '5px 10px' }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+      {n} en attente
     </div>
   );
 }

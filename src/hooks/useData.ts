@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadCache, saveCache } from '../lib/cache';
-import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document } from '../types';
+import { cleanInput } from '../lib/sanitizer';
+import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document, ChecklistItem } from '../types';
 
 export function useWorkspace(refreshKey = 0) {
   const [workspace, setWorkspace] = useState<Workspace | null>(() => loadCache<Workspace | null>('workspace', null));
@@ -216,7 +217,8 @@ export async function createTask(payload: {
   description?: string | null;
   position?: number;
 }) {
-  const { data, error } = await supabase.from('tasks').insert(payload).select().single();
+  const clean = { ...payload, title: cleanInput(payload.title), description: payload.description ? cleanInput(payload.description) : payload.description };
+  const { data, error } = await supabase.from('tasks').insert(clean).select().single();
   return { data, error };
 }
 
@@ -227,6 +229,8 @@ export async function updateTask(taskId: string, updates: Partial<Task>) {
     if (f in updates) allowed[f] = (updates as Record<string, unknown>)[f];
   }
   allowed['updated_at'] = new Date().toISOString();
+  if (typeof allowed.title === 'string') allowed.title = cleanInput(allowed.title as string);
+  if (typeof allowed.description === 'string') allowed.description = cleanInput(allowed.description as string);
   const { error } = await supabase.from('tasks').update(allowed).eq('id', taskId);
   return { error };
 }
@@ -237,7 +241,7 @@ export async function deleteTask(taskId: string) {
 }
 
 export async function createColumn(boardId: string, name: string, color: string, position: number) {
-  const { data, error } = await supabase.from('columns').insert({ board_id: boardId, name, color, position }).select().single();
+  const { data, error } = await supabase.from('columns').insert({ board_id: boardId, name: cleanInput(name), color, position }).select().single();
   return { data, error };
 }
 
@@ -247,14 +251,14 @@ export async function updateColumn(colId: string, updates: Partial<Column>) {
 }
 
 export async function addComment(taskId: string, memberId: string, content: string) {
-  const { data, error } = await supabase.from('comments').insert({ task_id: taskId, member_id: memberId, content }).select('*, member:members(*)').single();
+  const { data, error } = await supabase.from('comments').insert({ task_id: taskId, member_id: memberId, content: cleanInput(content) }).select('*, member:members(*)').single();
   if (!error) {
-    await supabase.rpc('increment_comments_count', { p_task_id: taskId }).catch(() => {
-      supabase.from('tasks').select('comments_count').eq('id', taskId).single()
-        .then(({ data: t }) => {
-          if (t) supabase.from('tasks').update({ comments_count: (t.comments_count || 0) + 1 }).eq('id', taskId);
-        });
-    });
+    const { error: rpcError } = await supabase.rpc('increment_comments_count', { p_task_id: taskId });
+    if (rpcError) {
+      // Fallback si la fonction RPC n'existe pas : lecture + incrément manuel
+      const { data: t } = await supabase.from('tasks').select('comments_count').eq('id', taskId).single();
+      if (t) await supabase.from('tasks').update({ comments_count: (t.comments_count || 0) + 1 }).eq('id', taskId);
+    }
   }
   return { data: data as Comment | null, error };
 }
@@ -329,17 +333,17 @@ export async function updateAutomation(automationId: string, updates: Partial<Au
 }
 
 export async function createBoard(folderId: string, name: string, color: string, description: string, position: number) {
-  const { data, error } = await supabase.from('boards').insert({ folder_id: folderId, name, color, description, position }).select().single();
+  const { data, error } = await supabase.from('boards').insert({ folder_id: folderId, name: cleanInput(name), color, description: cleanInput(description), position }).select().single();
   return { data, error };
 }
 
 export async function createFolder(workspaceId: string, name: string, position: number) {
-  const { data, error } = await supabase.from('folders').insert({ workspace_id: workspaceId, name, position }).select().single();
+  const { data, error } = await supabase.from('folders').insert({ workspace_id: workspaceId, name: cleanInput(name), position }).select().single();
   return { data, error };
 }
 
 export async function createMember(workspaceId: string, name: string, initials: string, color: string, role: string) {
-  const { data, error } = await supabase.from('members').insert({ workspace_id: workspaceId, name, initials, color, role }).select().single();
+  const { data, error } = await supabase.from('members').insert({ workspace_id: workspaceId, name: cleanInput(name), initials, color, role }).select().single();
   return { data: data as Member | null, error };
 }
 
