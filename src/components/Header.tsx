@@ -29,6 +29,8 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [savingInvite, setSavingInvite] = useState(false);
+  const [showDeleteBoard, setShowDeleteBoard] = useState(false);
+  const [deletingBoard, setDeletingBoard] = useState(false);
 
   // Réinitialise le formulaire quand la modale « Nouveau Bureau » s'ouvre (depuis le Header ou le tableau de bord)
   useEffect(() => {
@@ -115,6 +117,14 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
     app.refreshAll();
   };
 
+  const handleDeleteBoard = async () => {
+    if (!board || deletingBoard) return;
+    setDeletingBoard(true);
+    await app.deleteBoard(board.id);
+    setDeletingBoard(false);
+    setShowDeleteBoard(false);
+  };
+
   return (
     <header style={{ flexShrink: 0, borderBottom: '1px solid var(--line)', background: 'var(--panel)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", position: 'relative', zIndex: 20 }}>
       <div style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 22px', gap: 14 }}>
@@ -165,6 +175,13 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
               {members.slice(0, 5).map((m, i) => (
                 <div key={m.id} title={m.name} style={{ width: 29, height: 29, borderRadius: '50%', background: m.color, color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2.5px solid var(--panel)', marginLeft: i > 0 ? -8 : 0 }}>{m.initials}</div>
               ))}
+            </div>
+          )}
+
+          {/* Delete board */}
+          {isBoard && board && (
+            <div onClick={() => setShowDeleteBoard(true)} title="Supprimer ce Bureau" style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line2)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ef4444', transition: 'background .1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')} onMouseLeave={e => (e.currentTarget.style.background = 'var(--panel)')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
             </div>
           )}
 
@@ -274,6 +291,28 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
           </div>
         </>
       )}
+      {/* Delete board confirmation */}
+      {showDeleteBoard && board && (
+        <>
+          <div onClick={() => setShowDeleteBoard(false)} style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 60, animation: 'lyFade .15s ease' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 61, width: 460, background: 'var(--panel)', borderRadius: 16, padding: '22px 24px', boxShadow: 'var(--shadow-md)', animation: 'lyPop .18s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" /></svg>
+              </div>
+              <div style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--ink)' }}>Supprimer ce Bureau ?</div>
+            </div>
+            <div style={{ fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.5, marginBottom: 18 }}>
+              Tu vas supprimer <b>« {board.name} »</b> et <b>toutes ses colonnes et tâches</b>. Cette action est <b>définitive</b> et irréversible.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowDeleteBoard(false)} style={{ background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 8, padding: '9px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={handleDeleteBoard} disabled={deletingBoard} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deletingBoard ? 0.6 : 1 }}>{deletingBoard ? '…' : 'Supprimer définitivement'}</button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Invite member modal */}
       {showInvite && (
         <>

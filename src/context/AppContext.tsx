@@ -81,6 +81,7 @@ interface AppContextValue extends AppState {
   addDocument: (workspaceId: string, title: string, emoji: string, parentId?: string | null, authorId?: string | null) => Promise<void>;
   updateDocument: (docId: string, updates: { title?: string; content?: unknown[]; emoji?: string }) => Promise<void>;
   createBoard: (folderId: string, name: string, color: string, description: string) => Promise<void>;
+  deleteBoard: (boardId: string) => Promise<void>;
   createFolder: (workspaceId: string, name: string) => Promise<void>;
   updateAutomationActive: (automationId: string, active: boolean) => Promise<void>;
   createAutomation: (workspaceId: string, title: string, triggerDesc: string, actionDesc: string) => Promise<void>;
@@ -279,6 +280,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
+  const deleteBoard = useCallback(async (boardId: string) => {
+    await api.deleteBoard(boardId);
+    setState(s => ({ ...s, screen: 'dashboard', activeBoardId: null, selectedTaskId: null, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
   const createFolder = useCallback(async (workspaceId: string, name: string) => {
     await api.createFolder(workspaceId, name, 99);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
@@ -327,7 +333,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTask, patchTask, removeTask, addColumn, postComment,
       addChecklistItem, removeChecklistItem,
       addTaskLabel, removeTaskLabel, addTaskAssignee, removeTaskAssignee,
-      addDocument, updateDocument, createBoard, createFolder,
+      addDocument, updateDocument, createBoard, deleteBoard, createFolder,
       updateAutomationActive, createAutomation, refreshAll,
       archiveTask, restoreTask, toggleTaskDone,
     }}>

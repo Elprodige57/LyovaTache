@@ -337,6 +337,12 @@ export async function createBoard(folderId: string, name: string, color: string,
   return { data, error };
 }
 
+export async function deleteBoard(boardId: string) {
+  // Cascade : colonnes, tâches, étiquettes/assignés/sous-tâches/commentaires liés
+  const { error } = await supabase.from('boards').delete().eq('id', boardId);
+  return { error };
+}
+
 export async function createFolder(workspaceId: string, name: string, position: number) {
   const { data, error } = await supabase.from('folders').insert({ workspace_id: workspaceId, name: cleanInput(name), position }).select().single();
   return { data, error };
