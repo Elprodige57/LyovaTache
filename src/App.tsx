@@ -1,4 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
+import { LoginScreen } from './components/LoginScreen';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -16,18 +19,19 @@ import { MyTasks } from './views/MyTasks';
 import { ArchivesView } from './views/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
-  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks
+  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember
 } from './hooks/useData';
 import type { Task } from './types';
 
 const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
-const CURRENT_MEMBER_ID = '00000000-0000-0000-0001-000000000001';
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
+const GUEST_MEMBER_ID = '00000000-0000-0000-0001-000000000001'; // Camille (mode démo sans compte)
 
-function AppContent() {
+function AppContent({ session }: { session: Session | null }) {
   const app = useApp();
+  const isGuest = !session;
 
-  const { workspace } = useWorkspace();
+  const { workspace } = useWorkspace(app.refreshCounter);
   const members = useMembers(WORKSPACE_ID, app.refreshCounter);
   const { folders } = useFolders(WORKSPACE_ID, app.refreshCounter);
   const labels = useLabels(WORKSPACE_ID);
@@ -50,7 +54,15 @@ function AppContent() {
   const allBoardIds = allBoards.map(b => b.id);
   const { tasks: allTasks } = useAllTasks(app.screen === 'mytasks' ? allBoardIds : [], app.refreshCounter);
 
-  const currentMember = members.find(m => m.id === CURRENT_MEMBER_ID) ?? null;
+  const authedMember = useCurrentMember(
+    session?.user.id ?? null,
+    session?.user.email ?? null,
+    (session?.user.user_metadata?.name as string | undefined) ?? null,
+    WORKSPACE_ID,
+    app.refreshCounter,
+  );
+  const currentMember = session ? authedMember : (members.find(m => m.id === GUEST_MEMBER_ID) ?? null);
+  const currentMemberId = currentMember?.id ?? '';
   const boardMembers = board?.members ?? [];
 
   // Apply task overrides
@@ -136,7 +148,7 @@ function AppContent() {
             isBoard={isBoard}
             folders={folders}
             workspaceId={WORKSPACE_ID}
-            currentMemberId={CURRENT_MEMBER_ID}
+            currentMemberId={currentMemberId}
           />
         )}
 
@@ -147,7 +159,7 @@ function AppContent() {
           )}
 
           {app.screen === 'mytasks' && (
-            <MyTasks tasks={effectiveAllTasks} currentMemberId={CURRENT_MEMBER_ID} />
+            <MyTasks tasks={effectiveAllTasks} currentMemberId={currentMemberId} />
           )}
 
           {app.screen === 'documents' && (
@@ -191,7 +203,7 @@ function AppContent() {
       {app.aiOpen && <AIPanel />}
 
       {/* Settings panel */}
-      {app.settingsOpen && <SettingsPanel boards={allBoards} currentMember={currentMember} currentMemberId={CURRENT_MEMBER_ID} />}
+      {app.settingsOpen && <SettingsPanel boards={allBoards} currentMember={currentMember} currentMemberId={currentMemberId} workspace={workspace} isGuest={isGuest} />}
 
       {/* Search modal */}
       {app.searchOpen && <SearchModal tasks={effectiveTasks} folders={folders} documents={documents} />}
@@ -249,9 +261,33 @@ function NotificationsPlaceholder() {
 }
 
 export default function App() {
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [guest, setGuest] = useState(() => localStorage.getItem('lyova_guest') === '1');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (s) { localStorage.removeItem('lyova_guest'); setGuest(false); }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const enterGuest = () => { localStorage.setItem('lyova_guest', '1'); setGuest(true); };
+
+  if (!guest && session === undefined) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--sub2)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontWeight: 600 }}>
+        Chargement…
+      </div>
+    );
+  }
+
+  if (!guest && !session) return <LoginScreen onGuest={enterGuest} />;
+
   return (
     <AppProvider>
-      <AppContent />
+      <AppContent session={session ?? null} />
     </AppProvider>
   );
 }

@@ -1,25 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import type { Board, Member } from '../types';
+import { supabase } from '../lib/supabase';
+import { updateWorkspace } from '../hooks/useData';
+import { exportBoard, importBoard, downloadJson } from '../lib/boardIO';
+import type { Board, Member, Workspace } from '../types';
 
 interface SettingsPanelProps {
   boards?: Board[];
   currentMember?: Member | null;
   currentMemberId?: string;
+  workspace?: Workspace | null;
+  isGuest?: boolean;
 }
 
-export function SettingsPanel({ boards = [], currentMember = null, currentMemberId }: SettingsPanelProps) {
+export function SettingsPanel({ boards = [], currentMember = null, currentMemberId, workspace = null, isGuest = false }: SettingsPanelProps) {
   const app = useApp();
   const [tab, setTab] = useState<'general' | 'notifications' | 'account'>('general');
-  const [workspaceName, setWorkspaceName] = useState('Lyova Tech');
+  const [workspaceName, setWorkspaceName] = useState(workspace?.name ?? 'Lyova Tech');
   const [emailNotif, setEmailNotif] = useState(true);
   const [slackNotif, setSlackNotif] = useState(false);
   const [dailyDigest, setDailyDigest] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [ioMsg, setIoMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = () => {
+  // Charge le nom d'espace et les préférences de notif existants
+  useEffect(() => { if (workspace?.name) setWorkspaceName(workspace.name); }, [workspace?.name]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('lyova_notif_prefs');
+      if (raw) { const p = JSON.parse(raw); setEmailNotif(!!p.email); setSlackNotif(!!p.slack); setDailyDigest(!!p.daily); }
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => setSaving(false), 500);
+    if (workspace?.id) await updateWorkspace(workspace.id, { name: workspaceName.trim() });
+    try { localStorage.setItem('lyova_notif_prefs', JSON.stringify({ email: emailNotif, slack: slackNotif, daily: dailyDigest })); } catch { /* ignore */ }
+    app.refreshAll();
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1600);
+  };
+
+  const handleExport = async () => {
+    const bid = app.activeBoardId;
+    if (!bid) { setIoMsg('Ouvre d’abord un Bureau pour l’exporter.'); return; }
+    setIoMsg('Export en cours…');
+    try {
+      const data = await exportBoard(bid);
+      downloadJson(`${data.board.name.replace(/[^\w-]+/g, '_')}.json`, data);
+      setIoMsg('Bureau exporté ✓');
+    } catch (e) {
+      setIoMsg('Échec de l’export : ' + (e as Error).message);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setIoMsg('Import en cours…');
+    try {
+      const json = JSON.parse(await file.text());
+      const ws = workspace?.id ?? '00000000-0000-0000-0000-000000000001';
+      const newId = await importBoard(ws, json);
+      app.refreshAll();
+      setIoMsg('Bureau importé ✓');
+      if (newId) { app.openBoard(newId); app.toggleSettings(); }
+    } catch (err) {
+      setIoMsg('Échec de l’import : ' + (err as Error).message);
+    }
   };
 
   const tabs = [
@@ -91,6 +143,22 @@ export function SettingsPanel({ boards = [], currentMember = null, currentMember
                 </select>
               </div>
               <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Données</div>
+                <div style={{ fontSize: 12, color: 'var(--sub2)', marginBottom: 8 }}>Exporter le Bureau ouvert en JSON, ou importer un Bureau depuis un fichier.</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleExport} style={{ flex: 1, background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                    Exporter
+                  </button>
+                  <button onClick={() => fileRef.current?.click()} style={{ flex: 1, background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 9l5-5 5 5M12 4v12" /></svg>
+                    Importer
+                  </button>
+                  <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{ display: 'none' }} />
+                </div>
+                {ioMsg && <div style={{ fontSize: 12, color: 'var(--accent-ink)', marginTop: 8, fontWeight: 600 }}>{ioMsg}</div>}
+              </div>
+              <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Apparence</div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <div onClick={app.toggleTheme} style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1px solid ${app.theme === 'light' ? 'var(--accent)' : 'var(--line2)'}`, background: app.theme === 'light' ? 'var(--accent-soft)' : 'var(--panel)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
@@ -130,10 +198,10 @@ export function SettingsPanel({ boards = [], currentMember = null, currentMember
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Profil</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--panel)' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>CR</div>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: currentMember?.color ?? 'var(--accent)', color: '#fff', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{currentMember?.initials ?? '?'}</div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Camille Royer</div>
-                    <div style={{ fontSize: 12, color: 'var(--sub2)' }}>Propriétaire · camille@lyova.tech</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>{currentMember?.name ?? 'Utilisateur'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--sub2)' }}>{currentMember?.role ?? 'Membre'}{currentMember?.email ? ` · ${currentMember.email}` : ''}</div>
                   </div>
                 </div>
               </div>
@@ -144,6 +212,10 @@ export function SettingsPanel({ boards = [], currentMember = null, currentMember
                   <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 2 }}>5 membres · Automations · Documents</div>
                 </div>
               </div>
+              <button onClick={() => { if (isGuest) { localStorage.removeItem('lyova_guest'); window.location.reload(); } else { supabase.auth.signOut(); } }} style={{ background: 'transparent', color: isGuest ? 'var(--accent-ink)' : '#ef4444', border: `1px solid ${isGuest ? 'var(--line2)' : 'rgba(239,68,68,0.35)'}`, borderRadius: 10, padding: '10px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+                {isGuest ? 'Se connecter (quitter le mode démo)' : 'Se déconnecter'}
+              </button>
             </div>
           )}
         </div>
@@ -151,7 +223,7 @@ export function SettingsPanel({ boards = [], currentMember = null, currentMember
         {/* Footer */}
         <div style={{ borderTop: '1px solid var(--line)', padding: '14px 20px', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={app.toggleSettings} style={{ background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-          <button onClick={handleSave} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{saving ? '…' : 'Enregistrer'}</button>
+          <button onClick={handleSave} disabled={saving} style={{ background: saved ? '#10b981' : 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1, transition: 'background .2s' }}>{saving ? '…' : saved ? 'Enregistré ✓' : 'Enregistrer'}</button>
         </div>
       </div>
     </>

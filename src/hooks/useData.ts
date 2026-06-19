@@ -2,16 +2,21 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document } from '../types';
 
-export function useWorkspace() {
+export function useWorkspace(refreshKey = 0) {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.from('workspaces').select('*').limit(1).single()
       .then(({ data }) => { setWorkspace(data); setLoading(false); });
-  }, []);
+  }, [refreshKey]);
 
   return { workspace, loading };
+}
+
+export async function updateWorkspace(workspaceId: string, updates: { name?: string }) {
+  const { error } = await supabase.from('workspaces').update(updates).eq('id', workspaceId);
+  return { error };
 }
 
 export function useMembers(workspaceId: string | undefined, refreshKey = 0) {
@@ -366,4 +371,46 @@ export function useAllTasks(boardIds: string[], refreshKey = 0) {
   useEffect(() => { reload(); }, [reload, refreshKey]);
 
   return { tasks };
+}
+
+// Résout le membre correspondant au compte Supabase Auth connecté.
+// 1) déjà lié (auth_id) ; 2) rattaché par email ; 3) sinon provisionné.
+export function useCurrentMember(
+  authId: string | null,
+  email: string | null,
+  displayName: string | null,
+  workspaceId: string,
+  refreshKey = 0,
+) {
+  const [member, setMember] = useState<Member | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!authId) { setMember(null); return; }
+    (async () => {
+      let { data } = await supabase.from('members').select('*').eq('auth_id', authId).maybeSingle();
+      if (!data && email) {
+        const byEmail = await supabase.from('members').select('*').eq('email', email).maybeSingle();
+        if (byEmail.data) {
+          await supabase.from('members').update({ auth_id: authId }).eq('id', byEmail.data.id);
+          data = { ...byEmail.data, auth_id: authId };
+        }
+      }
+      if (!data) {
+        const base = (displayName?.trim() || email?.split('@')[0] || 'Membre').replace(/[._-]+/g, ' ').trim();
+        const initials = base.split(/\s+/).map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+        const colors = ['#5b50e8', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#14b8a6', '#ec4899'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const ins = await supabase.from('members')
+          .insert({ workspace_id: workspaceId, name: base, initials, color, role: 'Membre', email, auth_id: authId })
+          .select().single();
+        data = ins.data;
+      }
+      if (!cancelled) setMember((data as Member) ?? null);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authId, email, workspaceId, refreshKey]);
+
+  return member;
 }

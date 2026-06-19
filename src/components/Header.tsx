@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { createMember, addBoardMember } from '../hooks/useData';
+import { createMember, addBoardMember, createBoard, createFolder } from '../hooks/useData';
 import type { Board, Member, Label, Folder } from '../types';
 
 interface HeaderProps {
@@ -84,11 +84,20 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
 
   const handleSaveBoard = async () => {
     const n = newBoardName.trim();
-    if (!n || !newBoardFolder || savingBoard) return;
+    if (!n || savingBoard) return;
     setSavingBoard(true);
-    await app.createBoard(newBoardFolder, n, newBoardColor, '');
+    const ws = workspaceId || '00000000-0000-0000-0000-000000000001';
+    // Si aucun dossier n'existe/n'est sélectionné, on en crée un par défaut
+    let folderId = newBoardFolder;
+    if (!folderId) {
+      const { data: f } = await createFolder(ws, 'Mes Bureaux', 0);
+      folderId = f?.id ?? '';
+    }
+    const { data: b } = await createBoard(folderId, n, newBoardColor, '', 99);
     app.closeCreateBoard();
     setSavingBoard(false);
+    app.refreshAll();
+    if (b?.id) app.openBoard(b.id); // ouvre le nouveau Bureau (retour visuel clair)
   };
 
   const INVITE_COLORS = ['#5b50e8', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#14b8a6', '#ec4899'];
@@ -257,7 +266,7 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
               <button onClick={() => app.closeCreateBoard()} style={{ background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 8, padding: '8px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={handleSaveBoard} disabled={!newBoardName.trim() || !newBoardFolder || savingBoard} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !newBoardName.trim() || !newBoardFolder || savingBoard ? 0.5 : 1 }}>{savingBoard ? '…' : 'Créer le bureau'}</button>
+              <button onClick={handleSaveBoard} disabled={!newBoardName.trim() || savingBoard} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !newBoardName.trim() || savingBoard ? 0.5 : 1 }}>{savingBoard ? '…' : 'Créer le bureau'}</button>
             </div>
           </div>
         </>
