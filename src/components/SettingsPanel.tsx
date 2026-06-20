@@ -7,13 +7,14 @@ import type { Board, Member, Workspace } from '../types';
 
 interface SettingsPanelProps {
   boards?: Board[];
+  members?: Member[];
   currentMember?: Member | null;
   currentMemberId?: string;
   workspace?: Workspace | null;
   isGuest?: boolean;
 }
 
-export function SettingsPanel({ boards = [], currentMember = null, currentMemberId, workspace = null, isGuest = false }: SettingsPanelProps) {
+export function SettingsPanel({ boards = [], members = [], currentMember = null, currentMemberId, workspace = null, isGuest = false }: SettingsPanelProps) {
   const app = useApp();
   const [tab, setTab] = useState<'general' | 'notifications' | 'account'>('general');
   const [workspaceName, setWorkspaceName] = useState(workspace?.name ?? 'Lyova Tech');
@@ -210,6 +211,25 @@ export function SettingsPanel({ boards = [], currentMember = null, currentMember
                 <div style={{ padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--accent-soft)' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-ink)' }}>Plan Équipe</div>
                   <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 2 }}>5 membres · Automations · Documents</div>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Membres de l'espace</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {members.map(m => (
+                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 9 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: m.color, color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{m.initials}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--sub2)' }}>{m.role}{m.id === currentMemberId ? ' · vous' : ''}</div>
+                      </div>
+                      {m.id !== currentMemberId && (
+                        <button onClick={() => { if (confirm(`Retirer ${m.name} de l'espace ? Action irréversible.`)) app.deleteMember(m.id); }} title="Retirer le membre" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
               <button onClick={() => { if (isGuest) { localStorage.removeItem('lyova_guest'); window.location.reload(); } else { supabase.auth.signOut(); } }} style={{ background: 'transparent', color: isGuest ? 'var(--accent-ink)' : '#ef4444', border: `1px solid ${isGuest ? 'var(--line2)' : 'rgba(239,68,68,0.35)'}`, borderRadius: 10, padding: '10px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>

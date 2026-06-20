@@ -250,6 +250,12 @@ export async function updateColumn(colId: string, updates: Partial<Column>) {
   return { error };
 }
 
+export async function deleteColumn(colId: string) {
+  // Cascade : tâches de la colonne
+  const { error } = await supabase.from('columns').delete().eq('id', colId);
+  return { error };
+}
+
 export async function addComment(taskId: string, memberId: string, content: string) {
   const { data, error } = await supabase.from('comments').insert({ task_id: taskId, member_id: memberId, content: cleanInput(content) }).select('*, member:members(*)').single();
   if (!error) {
@@ -348,9 +354,21 @@ export async function createFolder(workspaceId: string, name: string, position: 
   return { data, error };
 }
 
+export async function deleteFolder(folderId: string) {
+  // Cascade : Bureaux du dossier (et leurs colonnes/tâches)
+  const { error } = await supabase.from('folders').delete().eq('id', folderId);
+  return { error };
+}
+
 export async function createMember(workspaceId: string, name: string, initials: string, color: string, role: string) {
   const { data, error } = await supabase.from('members').insert({ workspace_id: workspaceId, name: cleanInput(name), initials, color, role }).select().single();
   return { data: data as Member | null, error };
+}
+
+export async function deleteMember(memberId: string) {
+  // Cascade : assignations et appartenances aux Bureaux du membre
+  const { error } = await supabase.from('members').delete().eq('id', memberId);
+  return { error };
 }
 
 export async function addBoardMember(boardId: string, memberId: string) {

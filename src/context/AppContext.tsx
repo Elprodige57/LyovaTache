@@ -82,6 +82,9 @@ interface AppContextValue extends AppState {
   updateDocument: (docId: string, updates: { title?: string; content?: unknown[]; emoji?: string }) => Promise<void>;
   createBoard: (folderId: string, name: string, color: string, description: string) => Promise<void>;
   deleteBoard: (boardId: string) => Promise<void>;
+  deleteFolder: (folderId: string) => Promise<void>;
+  deleteColumn: (columnId: string) => Promise<void>;
+  deleteMember: (memberId: string) => Promise<void>;
   createFolder: (workspaceId: string, name: string) => Promise<void>;
   updateAutomationActive: (automationId: string, active: boolean) => Promise<void>;
   createAutomation: (workspaceId: string, title: string, triggerDesc: string, actionDesc: string) => Promise<void>;
@@ -285,6 +288,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, screen: 'dashboard', activeBoardId: null, selectedTaskId: null, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
+  const deleteFolder = useCallback(async (folderId: string) => {
+    await api.deleteFolder(folderId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const deleteColumn = useCallback(async (columnId: string) => {
+    await api.deleteColumn(columnId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const deleteMember = useCallback(async (memberId: string) => {
+    await api.deleteMember(memberId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
   const createFolder = useCallback(async (workspaceId: string, name: string) => {
     await api.createFolder(workspaceId, name, 99);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
@@ -333,7 +351,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTask, patchTask, removeTask, addColumn, postComment,
       addChecklistItem, removeChecklistItem,
       addTaskLabel, removeTaskLabel, addTaskAssignee, removeTaskAssignee,
-      addDocument, updateDocument, createBoard, deleteBoard, createFolder,
+      addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember, createFolder,
       updateAutomationActive, createAutomation, refreshAll,
       archiveTask, restoreTask, toggleTaskDone,
     }}>
