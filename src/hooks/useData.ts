@@ -349,6 +349,15 @@ export async function deleteBoard(boardId: string) {
   return { error };
 }
 
+export async function updateBoard(boardId: string, updates: { name?: string; color?: string; description?: string }) {
+  const clean: Record<string, unknown> = {};
+  if (updates.name !== undefined) clean.name = cleanInput(updates.name);
+  if (updates.color !== undefined) clean.color = updates.color;
+  if (updates.description !== undefined) clean.description = cleanInput(updates.description);
+  const { error } = await supabase.from('boards').update(clean).eq('id', boardId);
+  return { error };
+}
+
 export async function createFolder(workspaceId: string, name: string, position: number) {
   const { data, error } = await supabase.from('folders').insert({ workspace_id: workspaceId, name: cleanInput(name), position }).select().single();
   return { data, error };
@@ -357,6 +366,13 @@ export async function createFolder(workspaceId: string, name: string, position: 
 export async function deleteFolder(folderId: string) {
   // Cascade : Bureaux du dossier (et leurs colonnes/tâches)
   const { error } = await supabase.from('folders').delete().eq('id', folderId);
+  return { error };
+}
+
+export async function updateFolder(folderId: string, updates: { name?: string }) {
+  const clean: Record<string, unknown> = {};
+  if (updates.name !== undefined) clean.name = cleanInput(updates.name);
+  const { error } = await supabase.from('folders').update(clean).eq('id', folderId);
   return { error };
 }
 

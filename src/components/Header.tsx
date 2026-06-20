@@ -31,6 +31,15 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
   const [savingInvite, setSavingInvite] = useState(false);
   const [showDeleteBoard, setShowDeleteBoard] = useState(false);
   const [deletingBoard, setDeletingBoard] = useState(false);
+  const [showEditBoard, setShowEditBoard] = useState(false);
+  const [editBoardName, setEditBoardName] = useState('');
+  const [editBoardColor, setEditBoardColor] = useState(BOARD_COLORS[0]);
+  const [savingEditBoard, setSavingEditBoard] = useState(false);
+
+  // Pré-remplit la modale d'édition à l'ouverture
+  useEffect(() => {
+    if (showEditBoard && board) { setEditBoardName(board.name); setEditBoardColor(board.color); }
+  }, [showEditBoard, board]);
 
   // Réinitialise le formulaire quand la modale « Nouveau Bureau » s'ouvre (depuis le Header ou le tableau de bord)
   useEffect(() => {
@@ -125,6 +134,14 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
     setShowDeleteBoard(false);
   };
 
+  const handleSaveEditBoard = async () => {
+    if (!board || !editBoardName.trim() || savingEditBoard) return;
+    setSavingEditBoard(true);
+    await app.updateBoard(board.id, { name: editBoardName.trim(), color: editBoardColor });
+    setSavingEditBoard(false);
+    setShowEditBoard(false);
+  };
+
   return (
     <header style={{ flexShrink: 0, borderBottom: '1px solid var(--line)', background: 'var(--panel)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", position: 'relative', zIndex: 20 }}>
       <div style={{ height: 60, display: 'flex', alignItems: 'center', padding: '0 22px', gap: 14 }}>
@@ -175,6 +192,13 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
               {members.slice(0, 5).map((m, i) => (
                 <div key={m.id} title={m.name} style={{ width: 29, height: 29, borderRadius: '50%', background: m.color, color: '#fff', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2.5px solid var(--panel)', marginLeft: i > 0 ? -8 : 0 }}>{m.initials}</div>
               ))}
+            </div>
+          )}
+
+          {/* Edit board */}
+          {isBoard && board && (
+            <div onClick={() => setShowEditBoard(true)} title="Modifier le Bureau (nom, couleur)" style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line2)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--sub)', transition: 'background .1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft)')} onMouseLeave={e => (e.currentTarget.style.background = 'var(--panel)')}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
             </div>
           )}
 
@@ -291,6 +315,34 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
           </div>
         </>
       )}
+      {/* Edit board modal */}
+      {showEditBoard && board && (
+        <>
+          <div onClick={() => setShowEditBoard(false)} style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 60, animation: 'lyFade .15s ease' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 61, width: 520, background: 'var(--panel)', borderRadius: 16, padding: '22px 24px', boxShadow: 'var(--shadow-md)', animation: 'lyPop .18s ease' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)', marginBottom: 18 }}>Modifier le Bureau</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sub2)', marginBottom: 6 }}>Nom du bureau</div>
+                <input value={editBoardName} onChange={e => setEditBoardName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditBoard(); if (e.key === 'Escape') setShowEditBoard(false); }} autoFocus style={{ width: '100%', border: '1px solid var(--accent)', borderRadius: 9, padding: '10px 12px', fontSize: 14, fontWeight: 600, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--sub2)', marginBottom: 8 }}>Couleur</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {BOARD_COLORS.map(c => (
+                    <div key={c} onClick={() => setEditBoardColor(c)} style={{ width: 30, height: 30, borderRadius: 8, background: c, cursor: 'pointer', border: editBoardColor === c ? '3px solid var(--ink)' : '3px solid transparent', transition: 'border .15s' }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button onClick={() => setShowEditBoard(false)} style={{ background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 8, padding: '8px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
+              <button onClick={handleSaveEditBoard} disabled={!editBoardName.trim() || savingEditBoard} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: !editBoardName.trim() || savingEditBoard ? 0.5 : 1 }}>{savingEditBoard ? '…' : 'Enregistrer'}</button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Delete board confirmation */}
       {showDeleteBoard && board && (
         <>

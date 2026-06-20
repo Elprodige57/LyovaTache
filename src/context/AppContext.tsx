@@ -85,6 +85,9 @@ interface AppContextValue extends AppState {
   deleteFolder: (folderId: string) => Promise<void>;
   deleteColumn: (columnId: string) => Promise<void>;
   deleteMember: (memberId: string) => Promise<void>;
+  updateBoard: (boardId: string, updates: { name?: string; color?: string; description?: string }) => Promise<void>;
+  updateFolder: (folderId: string, updates: { name?: string }) => Promise<void>;
+  updateColumn: (columnId: string, updates: { name?: string; color?: string; wip_limit?: number }) => Promise<void>;
   createFolder: (workspaceId: string, name: string) => Promise<void>;
   updateAutomationActive: (automationId: string, active: boolean) => Promise<void>;
   createAutomation: (workspaceId: string, title: string, triggerDesc: string, actionDesc: string) => Promise<void>;
@@ -303,6 +306,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
+  const updateBoard = useCallback(async (boardId: string, updates: { name?: string; color?: string; description?: string }) => {
+    await api.updateBoard(boardId, updates);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const updateFolder = useCallback(async (folderId: string, updates: { name?: string }) => {
+    await api.updateFolder(folderId, updates);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const updateColumn = useCallback(async (columnId: string, updates: { name?: string; color?: string; wip_limit?: number }) => {
+    await api.updateColumn(columnId, updates);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
   const createFolder = useCallback(async (workspaceId: string, name: string) => {
     await api.createFolder(workspaceId, name, 99);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
@@ -351,7 +369,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTask, patchTask, removeTask, addColumn, postComment,
       addChecklistItem, removeChecklistItem,
       addTaskLabel, removeTaskLabel, addTaskAssignee, removeTaskAssignee,
-      addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember, createFolder,
+      addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember,
+      updateBoard, updateFolder, updateColumn, createFolder,
       updateAutomationActive, createAutomation, refreshAll,
       archiveTask, restoreTask, toggleTaskDone,
     }}>

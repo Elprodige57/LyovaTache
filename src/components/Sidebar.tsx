@@ -259,6 +259,15 @@ export function Sidebar({ workspace, folders, currentMember }: SidebarProps) {
               </svg>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{folder.name}</span>
               <button
+                onClick={(e) => { e.stopPropagation(); const n = prompt('Renommer le dossier', folder.name); if (n && n.trim()) app.updateFolder(folder.id, { name: n.trim() }); }}
+                title="Renommer le dossier"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 2, borderRadius: 5 }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-ink)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+              </button>
+              <button
                 onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le dossier « ${folder.name} » et tous ses Bureaux ? Action irréversible.`)) app.deleteFolder(folder.id); }}
                 title="Supprimer le dossier"
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 2, borderRadius: 5 }}

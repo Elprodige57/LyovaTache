@@ -154,6 +154,15 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                     </svg>
                   </div>
                   <div
+                    onClick={() => { const n = prompt('Renommer la colonne', col.name); if (n && n.trim()) app.updateColumn(col.id, { name: n.trim() }); }}
+                    title="Renommer la colonne"
+                    style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'all .1s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft2)'; e.currentTarget.style.color = 'var(--accent-ink)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sub2)'; }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                  </div>
+                  <div
                     onClick={() => { if (confirm(`Supprimer la colonne « ${col.name} » et ses ${colTasks.length} tâche(s) ? Action irréversible.`)) app.deleteColumn(col.id); }}
                     title="Supprimer la colonne"
                     style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'all .1s' }}
