@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Document } from '../types';
 
@@ -49,7 +49,6 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
 
   const selectedId = app.selectedDocId;
   const selected = tree.byId.get(selectedId || '') || tree.roots[0];
-  const selectedChildren = selected ? (children: Record<string, Document[]>) => children[selected.id] || [] : () => [];
 
   const startEditing = () => {
     if (!selected) return;

@@ -198,7 +198,7 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                 {isAddingHere ? (
                   <div style={{ background: 'var(--panel)', border: '1px solid var(--accent)', borderRadius: 10, padding: '8px 10px', boxShadow: 'var(--shadow)' }}>
                     <textarea
-                      ref={newCardInputRef as React.RefObject<HTMLTextAreaElement>}
+                      ref={newCardInputRef as unknown as React.RefObject<HTMLTextAreaElement>}
                       value={newCardTitle}
                       onChange={e => setNewCardTitle(e.target.value)}
                       onKeyDown={e => {

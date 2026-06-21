@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Board, Folder, Member, Task } from '../types';
 import { useApp } from '../context/AppContext';
 
@@ -257,7 +256,7 @@ export function Dashboard({ folders, members, allTasks }: DashboardProps) {
             <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 16, padding: '18px 20px', boxShadow: 'var(--shadow)' }}>
               <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 13, color: 'var(--ink)' }}>Échéances proches</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {upcomingTasks.length > 0 ? upcomingTasks.map((u, i) => {
+                {upcomingTasks.length > 0 ? upcomingTasks.map((u) => {
                   const d = new Date(u.due_date!);
                   const isUrgent = d < new Date();
                   const color = PRIO_COLORS[u.priority as keyof typeof PRIO_COLORS] || '#6366f1';

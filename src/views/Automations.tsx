@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Automation } from '../types';
 
@@ -44,13 +44,6 @@ export function AutomationsView({ automations }: AutomationsViewProps) {
     await app.updateAutomationActive(a.id, !a.is_active);
     setToggleId(null);
   };
-
-  const builderNodes = [
-    { kind: 'Déclencheur', kindColor: '#0ea5e9', label: 'Statut changé en « En revue »', border: 'rgba(14,165,233,0.4)', bg: 'rgba(14,165,233,0.06)', iconBg: 'rgba(14,165,233,0.14)', iconColor: '#0ea5e9', hasConnector: true },
-    { kind: 'Condition', kindColor: '#f59e0b', label: 'Priorité = Urgente', border: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.06)', iconBg: 'rgba(245,158,11,0.14)', iconColor: '#f59e0b', hasConnector: true },
-    { kind: 'Action', kindColor: '#10b981', label: 'Notifier les assignés (Slack + email)', border: 'rgba(16,185,129,0.4)', bg: 'rgba(16,185,129,0.06)', iconBg: 'rgba(16,185,129,0.14)', iconColor: '#10b981', hasConnector: true },
-    { kind: 'Action', kindColor: '#10b981', label: 'Ajouter le tag « escaladé »', border: 'rgba(16,185,129,0.4)', bg: 'rgba(16,185,129,0.06)', iconBg: 'rgba(16,185,129,0.14)', iconColor: '#10b981', hasConnector: false },
-  ];
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '22px 28px 40px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>

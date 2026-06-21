@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Task, Column, Member } from '../types';
 
@@ -31,7 +31,7 @@ export function TaskDrawer({ task, columns, currentMember }: TaskDrawerProps) {
   const [showPrioPicker, setShowPrioPicker] = useState(false);
   const [showColPicker, setShowColPicker] = useState(false);
   const [savingCheck, setSavingCheck] = useState(false);
-  const [deletingTask, setDeletingTask] = useState(false);
+  const [, setDeletingTask] = useState(false);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,7 +133,7 @@ export function TaskDrawer({ task, columns, currentMember }: TaskDrawerProps) {
 
   const handleChangePrio = async (p: string) => {
     if (p === task.priority) return;
-    await app.patchTask(task.id, { priority: p });
+    await app.patchTask(task.id, { priority: p as 'urgent' | 'high' | 'medium' | 'low' });
     setShowPrioPicker(false);
   };
 

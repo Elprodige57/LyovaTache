@@ -1,4 +1,3 @@
-import React from 'react';
 import { useApp } from '../context/AppContext';
 import type { Task, Column } from '../types';
 
@@ -29,14 +28,6 @@ function getWeekStart(d: Date) {
   return start;
 }
 
-function getWeekEnd(d: Date) {
-  const start = getWeekStart(d);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return end;
-}
-
 export function Agenda({ tasks, columns }: AgendaProps) {
   const app = useApp();
   const view = app.agendaView;
@@ -48,7 +39,6 @@ export function Agenda({ tasks, columns }: AgendaProps) {
     { key: 'team' as const, label: 'Équipe' },
   ];
 
-  const currentDate = new Date(app.calYear, app.calMonth, 15); // use month center
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '20px 22px 26px', display: 'flex', flexDirection: 'column', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
@@ -213,7 +203,6 @@ function DayView({ tasks, columns, app }: { tasks: Task[]; columns: Column[]; ap
   const dayTasks = tasks.filter(t => t.due_date && isSameDay(new Date(t.due_date), day));
   const isToday = isSameDay(day, TODAY);
 
-  const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8h-20h
 
   return (
     <div style={{ flex: 1, minHeight: 400, background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow)' }}>
