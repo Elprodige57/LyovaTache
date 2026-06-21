@@ -3,18 +3,19 @@ import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { updateWorkspace } from '../hooks/useData';
 import { exportBoard, importBoard, downloadJson } from '../lib/boardIO';
-import type { Board, Member, Workspace } from '../types';
+import type { Board, Member, Workspace, Label } from '../types';
 
 interface SettingsPanelProps {
   boards?: Board[];
   members?: Member[];
+  labels?: Label[];
   currentMember?: Member | null;
   currentMemberId?: string;
   workspace?: Workspace | null;
   isGuest?: boolean;
 }
 
-export function SettingsPanel({ boards = [], members = [], currentMember = null, currentMemberId, workspace = null, isGuest = false }: SettingsPanelProps) {
+export function SettingsPanel({ boards = [], members = [], labels = [], currentMember = null, currentMemberId, workspace = null, isGuest = false }: SettingsPanelProps) {
   const app = useApp();
   const [tab, setTab] = useState<'general' | 'notifications' | 'account'>('general');
   const [workspaceName, setWorkspaceName] = useState(workspace?.name ?? 'Lyova Tech');
@@ -25,6 +26,8 @@ export function SettingsPanel({ boards = [], members = [], currentMember = null,
   const [saved, setSaved] = useState(false);
   const [ioMsg, setIoMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [newLabelColor, setNewLabelColor] = useState('#5b50e8');
 
   // Charge le nom d'espace et les préférences de notif existants
   useEffect(() => { if (workspace?.name) setWorkspaceName(workspace.name); }, [workspace?.name]);
@@ -158,6 +161,29 @@ export function SettingsPanel({ boards = [], members = [], currentMember = null,
                   <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{ display: 'none' }} />
                 </div>
                 {ioMsg && <div style={{ fontSize: 12, color: 'var(--accent-ink)', marginTop: 8, fontWeight: 600 }}>{ioMsg}</div>}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Étiquettes</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                  {labels.length === 0 && <div style={{ fontSize: 12, color: 'var(--sub2)' }}>Aucune étiquette pour l'instant.</div>}
+                  {labels.map(l => (
+                    <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 9px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                      <span style={{ width: 12, height: 12, borderRadius: 3, background: l.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.name}</span>
+                      <button onClick={() => { const n = prompt('Nom de l’étiquette', l.name); if (n === null) return; const c = prompt('Couleur (hex, ex #5b50e8)', l.color) ?? l.color; app.updateLabel(l.id, { name: n.trim() || l.name, color: c.trim() || l.color }); }} title="Modifier" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 3, borderRadius: 5 }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-ink)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                      </button>
+                      <button onClick={() => { if (confirm(`Supprimer l'étiquette « ${l.name} » ?`)) app.deleteLabel(l.id); }} title="Supprimer" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 3, borderRadius: 5 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input value={newLabelName} onChange={e => setNewLabelName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newLabelName.trim() && workspace?.id) { app.createLabel(workspace.id, newLabelName.trim(), newLabelColor); setNewLabelName(''); } }} placeholder="Nouvelle étiquette" style={{ flex: 1, border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 11px', fontSize: 13, fontWeight: 600, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
+                  <input type="color" value={newLabelColor} onChange={e => setNewLabelColor(e.target.value)} title="Couleur" style={{ width: 38, height: 36, border: '1px solid var(--line2)', borderRadius: 9, background: 'var(--soft)', cursor: 'pointer', padding: 2 }} />
+                  <button onClick={() => { if (newLabelName.trim() && workspace?.id) { app.createLabel(workspace.id, newLabelName.trim(), newLabelColor); setNewLabelName(''); } }} disabled={!newLabelName.trim()} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: newLabelName.trim() ? 1 : 0.5 }}>Ajouter</button>
+                </div>
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Apparence</div>

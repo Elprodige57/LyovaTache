@@ -205,6 +205,7 @@ function AppContent({ session }: { session: Session | null }) {
           task={selectedTask}
           columns={columns}
           currentMember={currentMember}
+          allLabels={labels}
         />
       )}
 
@@ -212,7 +213,7 @@ function AppContent({ session }: { session: Session | null }) {
       {app.aiOpen && <AIPanel />}
 
       {/* Settings panel */}
-      {app.settingsOpen && <SettingsPanel boards={allBoards} members={members} currentMember={currentMember} currentMemberId={currentMemberId} workspace={workspace} isGuest={isGuest} />}
+      {app.settingsOpen && <SettingsPanel boards={allBoards} members={members} labels={labels} currentMember={currentMember} currentMemberId={currentMemberId} workspace={workspace} isGuest={isGuest} />}
 
       {/* Search modal */}
       {app.searchOpen && <SearchModal tasks={effectiveTasks} folders={folders} documents={documents} />}

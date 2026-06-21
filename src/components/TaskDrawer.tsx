@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import type { Task, Column, Member } from '../types';
+import type { Task, Column, Member, Label } from '../types';
 
 interface TaskDrawerProps {
   task: Task | null;
   columns: Column[];
   currentMember: Member | null;
+  allLabels?: Label[];
 }
 
 const PRIO_MAP: Record<string, { label: string; color: string }> = {
@@ -17,7 +18,7 @@ const PRIO_MAP: Record<string, { label: string; color: string }> = {
 
 const PRIOS = ['urgent', 'high', 'medium', 'low'] as const;
 
-export function TaskDrawer({ task, columns, currentMember }: TaskDrawerProps) {
+export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: TaskDrawerProps) {
   const app = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState('');
@@ -315,15 +316,22 @@ export function TaskDrawer({ task, columns, currentMember }: TaskDrawerProps) {
                   Étiquette
                 </span>
                 {showLabelPicker && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 5,
-                    background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 10,
-                    boxShadow: 'var(--shadow-md)', padding: 6, minWidth: 160,
-                    display: 'flex', flexDirection: 'column', gap: 2,
-                  }}>
-                    {/* This would need actual labels from workspace - using placeholder for now */}
-                    <div style={{ fontSize: 11, color: 'var(--sub2)', padding: '6px 8px' }}>Gérer les étiquettes depuis le tableau</div>
-                  </div>
+                  <>
+                    <div onClick={() => setShowLabelPicker(false)} style={{ position: 'fixed', inset: 0, zIndex: 4 }} />
+                    <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 5, background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 10, boxShadow: 'var(--shadow-md)', padding: 6, minWidth: 200, maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {allLabels.length === 0 && <div style={{ fontSize: 12, color: 'var(--sub2)', padding: '6px 8px' }}>Aucune étiquette. Crée-en dans Paramètres → Étiquettes.</div>}
+                      {allLabels.map(l => {
+                        const on = labels.some(x => x.id === l.id);
+                        return (
+                          <div key={l.id} onClick={() => { if (on) app.removeTaskLabel(task.id, l.id); else app.addTaskLabel(task.id, l.id); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, cursor: 'pointer', background: on ? 'var(--soft)' : 'transparent' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')} onMouseLeave={e => (e.currentTarget.style.background = on ? 'var(--soft)' : 'transparent')}>
+                            <span style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${on ? l.color : 'var(--line2)'}`, background: on ? l.color : 'transparent', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}</span>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink2)' }}>{l.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
