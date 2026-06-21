@@ -16,6 +16,7 @@ interface AppState {
   wsOpen: boolean;
   filterLabelIds: string[];
   sortMode: 'manual' | 'due' | 'priority' | 'title';
+  groupMode: 'status' | 'priority' | 'assignee';
   focus: boolean;
   autoTab: 'rules' | 'history';
   builderOpen: boolean;
@@ -49,6 +50,7 @@ interface AppContextValue extends AppState {
   toggleFilterLabel: (id: string) => void;
   clearFilterLabels: () => void;
   setSortMode: (mode: 'manual' | 'due' | 'priority' | 'title') => void;
+  setGroupMode: (mode: 'status' | 'priority' | 'assignee') => void;
   toggleFocus: () => void;
   setAutoTab: (tab: 'rules' | 'history') => void;
   toggleBuilder: () => void;
@@ -122,6 +124,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     wsOpen: false,
     filterLabelIds: [],
     sortMode: 'manual',
+    groupMode: 'status',
     focus: false,
     autoTab: 'rules',
     builderOpen: false,
@@ -169,6 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toggleFilterLabel = useCallback((id: string) => setState(s => ({ ...s, filterLabelIds: s.filterLabelIds.includes(id) ? s.filterLabelIds.filter(x => x !== id) : [...s.filterLabelIds, id] })), []);
   const clearFilterLabels = useCallback(() => setState(s => ({ ...s, filterLabelIds: [] })), []);
   const setSortMode = useCallback((sortMode: 'manual' | 'due' | 'priority' | 'title') => setState(s => ({ ...s, sortMode })), []);
+  const setGroupMode = useCallback((groupMode: 'status' | 'priority' | 'assignee') => setState(s => ({ ...s, groupMode })), []);
   const toggleFocus = useCallback(() => setState(s => ({ ...s, focus: !s.focus })), []);
   const setAutoTab = useCallback((tab: 'rules' | 'history') => setState(s => ({ ...s, autoTab: tab })), []);
   const toggleBuilder = useCallback(() => setState(s => ({ ...s, builderOpen: !s.builderOpen })), []);
@@ -418,7 +422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       goTo, openBoard, setBoardView, openTask, closeTask,
       openAI, closeAI, summarizeTask,
       toggleTheme, toggleDensity, toggleSidebar, toggleWs,
-      toggleFilterLabel, clearFilterLabels, setSortMode, toggleFocus, setAutoTab, toggleBuilder,
+      toggleFilterLabel, clearFilterLabels, setSortMode, setGroupMode, toggleFocus, setAutoTab, toggleBuilder,
       openDoc, setAgendaView, prevMonth, nextMonth, goToday,
       moveTask, moveTaskTo, toggleAutomation, toggleChecklistItem,
       toggleSettings, toggleSearch, toggleCreateFolder,

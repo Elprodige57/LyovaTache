@@ -239,7 +239,7 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 22px 11px' }}>
           <FilterMenu labels={labels} />
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--sub2)' }}>Grouper : Statut</span>
+            <GroupMenu />
             <DensityToggle />
             <FocusToggle />
             <SortMenu />
@@ -426,6 +426,53 @@ function PendingSyncBadge() {
     <div title="Modifications faites hors-ligne, en attente de synchronisation" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--accent-ink)', background: 'var(--accent-soft)', border: '1px solid var(--accent)', borderRadius: 7, padding: '5px 10px' }}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
       {n} en attente
+    </div>
+  );
+}
+
+function GroupMenu() {
+  const { groupMode, setGroupMode } = useApp();
+  const [open, setOpen] = useState(false);
+  const opts: { key: 'status' | 'priority' | 'assignee'; label: string }[] = [
+    { key: 'status', label: 'Statut' },
+    { key: 'priority', label: 'Priorité' },
+    { key: 'assignee', label: 'Assigné' },
+  ];
+  const active = groupMode !== 'status';
+  const current = opts.find(o => o.key === groupMode)?.label ?? 'Statut';
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        title="Grouper les cartes"
+        style={{ fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', border: `1px solid ${active ? 'var(--accent)' : 'var(--line2)'}`, padding: '5px 10px', borderRadius: 7, color: active ? 'var(--accent-ink)' : 'var(--sub2)', background: active ? 'var(--accent-soft)' : 'transparent', transition: 'all .1s' }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+        Grouper : {current}
+      </div>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 41, width: 170, background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 11, boxShadow: 'var(--shadow-md)', padding: 6, animation: 'lyPop .14s ease' }}>
+            {opts.map(o => {
+              const sel = groupMode === o.key;
+              return (
+                <div
+                  key={o.key}
+                  onClick={() => { setGroupMode(o.key); setOpen(false); }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 9px', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: sel ? 'var(--accent-ink)' : 'var(--ink2)', background: sel ? 'var(--accent-soft)' : 'transparent' }}
+                  onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'var(--hover)'; }}
+                  onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {o.label}
+                  {sel && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import type { Column, Task } from '../types';
+import type { Column, Task, Member } from '../types';
 import { useApp } from '../context/AppContext';
 
 const PRIO_COLORS: Record<string, string> = {
@@ -13,9 +13,12 @@ const COL_COLORS = ['#5b50e8','#0ea5e9','#10b981','#f59e0b','#f43f5e','#8b5cf6',
 interface KanbanProps {
   columns: Column[];
   tasks: Task[];
+  members: Member[];
 }
 
-export function Kanban({ columns, tasks }: KanbanProps) {
+type DisplayCol = { id: string; name: string; color: string; wip_limit: number; kind: 'status' | 'priority' | 'assignee' };
+
+export function Kanban({ columns, tasks, members }: KanbanProps) {
   const app = useApp();
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
@@ -30,14 +33,19 @@ export function Kanban({ columns, tasks }: KanbanProps) {
 
   const activeBoardId = app.activeBoardId ?? '00000000-0000-0000-0003-000000000001';
 
-  const getTasksForColumn = (colId: string) => {
+  const getGroupTasks = (col: DisplayCol) => {
     return tasks
       .filter(t => {
+        if (app.filterLabelIds.length > 0 && !(t.labels || []).some(l => app.filterLabelIds.includes(l.id))) return false;
+        if (col.kind === 'priority') return t.priority === col.id;
+        if (col.kind === 'assignee') {
+          const ass = t.assignees || [];
+          return col.id === '__none__' ? ass.length === 0 : ass.some(a => a.id === col.id);
+        }
         const override = app.taskOverrides[t.id];
         const colId2 = override?.column_id ?? t.column_id;
-        return colId2 === colId;
+        return colId2 === col.id;
       })
-      .filter(t => app.filterLabelIds.length === 0 || (t.labels || []).some(l => app.filterLabelIds.includes(l.id)))
       .sort((a, b) => {
         switch (app.sortMode) {
           case 'due': {
@@ -57,13 +65,19 @@ export function Kanban({ columns, tasks }: KanbanProps) {
       });
   };
 
-  const handleDrop = (colId: string) => (e: React.DragEvent) => {
+  const handleDrop = (col: DisplayCol) => (e: React.DragEvent) => {
     e.preventDefault();
     if (dragTaskId) {
-      // Position = fin de la colonne cible (l'ordre est ainsi persisté)
-      const targetTasks = tasks.filter(t => (app.taskOverrides[t.id]?.column_id ?? t.column_id) === colId && t.id !== dragTaskId);
-      const maxPos = targetTasks.reduce((m, t) => Math.max(m, t.position), -1);
-      app.moveTaskTo(dragTaskId, colId, maxPos + 1);
+      if (col.kind === 'priority') {
+        app.patchTask(dragTaskId, { priority: col.id as 'urgent' | 'high' | 'medium' | 'low' });
+      } else if (col.kind === 'assignee') {
+        if (col.id !== '__none__') app.addTaskAssignee(dragTaskId, col.id);
+      } else {
+        // Statut : position = fin de la colonne cible (l'ordre est persisté)
+        const targetTasks = tasks.filter(t => (app.taskOverrides[t.id]?.column_id ?? t.column_id) === col.id && t.id !== dragTaskId);
+        const maxPos = targetTasks.reduce((m, t) => Math.max(m, t.position), -1);
+        app.moveTaskTo(dragTaskId, col.id, maxPos + 1);
+      }
     }
     setDragTaskId(null);
     setDragOverColId(null);
@@ -102,6 +116,18 @@ export function Kanban({ columns, tasks }: KanbanProps) {
     setTimeout(() => newColInputRef.current?.focus(), 50);
   };
 
+  const PRIO_GROUPS: DisplayCol[] = [
+    { id: 'urgent', name: 'Urgente', color: '#ef4444', wip_limit: 0, kind: 'priority' },
+    { id: 'high', name: 'Haute', color: '#f97316', wip_limit: 0, kind: 'priority' },
+    { id: 'medium', name: 'Moyenne', color: '#6366f1', wip_limit: 0, kind: 'priority' },
+    { id: 'low', name: 'Basse', color: '#94a3b8', wip_limit: 0, kind: 'priority' },
+  ];
+  const displayColumns: DisplayCol[] =
+    app.groupMode === 'priority' ? PRIO_GROUPS
+      : app.groupMode === 'assignee'
+        ? [{ id: '__none__', name: 'Non assigné', color: '#94a3b8', wip_limit: 0, kind: 'assignee' }, ...members.map(m => ({ id: m.id, name: m.name, color: m.color, wip_limit: 0, kind: 'assignee' as const }))]
+        : columns.map(c => ({ id: c.id, name: c.name, color: c.color, wip_limit: c.wip_limit, kind: 'status' as const }));
+
   return (
     <div style={{
       position: 'absolute', inset: 0,
@@ -110,8 +136,8 @@ export function Kanban({ columns, tasks }: KanbanProps) {
       fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
     }}>
       <div style={{ display: 'flex', gap: 'var(--col-gap)', alignItems: 'flex-start', height: '100%', minWidth: 'max-content' }}>
-        {columns.map(col => {
-          const colTasks = getTasksForColumn(col.id);
+        {displayColumns.map(col => {
+          const colTasks = getGroupTasks(col);
           const over = dragOverColId === col.id;
           const wipOver = col.wip_limit > 0 && colTasks.length > col.wip_limit;
           const wipPct = col.wip_limit > 0 ? Math.min(100, colTasks.length / col.wip_limit * 100) : 0;
@@ -121,7 +147,7 @@ export function Kanban({ columns, tasks }: KanbanProps) {
             <div
               key={col.id}
               onDragOver={e => { e.preventDefault(); if (dragOverColId !== col.id) setDragOverColId(col.id); }}
-              onDrop={handleDrop(col.id)}
+              onDrop={handleDrop(col)}
               style={{
                 width: 'var(--col-w)', flexShrink: 0,
                 background: 'var(--panel2)', border: '1px solid var(--line)',
@@ -145,6 +171,7 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                   }}>
                     {col.wip_limit > 0 ? `${colTasks.length} / ${col.wip_limit}` : String(colTasks.length)}
                   </span>
+                  {col.kind === 'status' && (<>
                   <div
                     onClick={() => openAddCard(col.id)}
                     title="Ajouter une carte"
@@ -180,6 +207,7 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                   </div>
+                  </>)}
                 </div>
                 <div style={{ height: 3, background: 'var(--soft2)', borderRadius: 3, marginTop: 9, overflow: 'hidden' }}>
                   <div style={{
@@ -247,7 +275,7 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                       >Annuler</button>
                     </div>
                   </div>
-                ) : (
+                ) : col.kind === 'status' ? (
                   <div
                     onClick={() => openAddCard(col.id)}
                     style={{
@@ -264,14 +292,14 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                     </svg>
                     Ajouter une carte
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           );
         })}
 
-        {/* Add column */}
-        {addingCol ? (
+        {/* Add column (mode Statut uniquement) */}
+        {app.groupMode === 'status' && (addingCol ? (
           <div style={{
             width: 'var(--col-w)', flexShrink: 0,
             background: 'var(--panel)', border: '1px solid var(--accent)',
@@ -335,7 +363,7 @@ export function Kanban({ columns, tasks }: KanbanProps) {
             </svg>
             Ajouter une liste
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

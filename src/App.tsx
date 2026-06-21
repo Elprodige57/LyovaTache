@@ -186,7 +186,7 @@ function AppContent({ session }: { session: Session | null }) {
           )}
 
           {isBoard && app.boardView === 'kanban' && (
-            <Kanban columns={columns} tasks={effectiveTasks} />
+            <Kanban columns={columns} tasks={effectiveTasks} members={members} />
           )}
 
           {isBoard && app.boardView === 'agenda' && (
