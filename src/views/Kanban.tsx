@@ -154,8 +154,14 @@ export function Kanban({ columns, tasks }: KanbanProps) {
                     </svg>
                   </div>
                   <div
-                    onClick={() => { const n = prompt('Renommer la colonne', col.name); if (n && n.trim()) app.updateColumn(col.id, { name: n.trim() }); }}
-                    title="Renommer la colonne"
+                    onClick={() => {
+                      const n = prompt('Nom de la colonne', col.name);
+                      if (n === null) return;
+                      const w = prompt('Limite WIP (0 = aucune)', String(col.wip_limit ?? 0));
+                      const wip = w === null ? (col.wip_limit ?? 0) : (parseInt(w, 10) || 0);
+                      app.updateColumn(col.id, { name: n.trim() || col.name, wip_limit: Math.max(0, wip) });
+                    }}
+                    title="Modifier la colonne (nom, limite WIP)"
                     style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'all .1s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft2)'; e.currentTarget.style.color = 'var(--accent-ink)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sub2)'; }}
