@@ -88,6 +88,14 @@ interface AppContextValue extends AppState {
   updateBoard: (boardId: string, updates: { name?: string; color?: string; description?: string }) => Promise<void>;
   updateFolder: (folderId: string, updates: { name?: string }) => Promise<void>;
   updateColumn: (columnId: string, updates: { name?: string; color?: string; wip_limit?: number }) => Promise<void>;
+  deleteDocument: (docId: string) => Promise<void>;
+  deleteAutomation: (automationId: string) => Promise<void>;
+  updateComment: (commentId: string, content: string) => Promise<void>;
+  removeComment: (commentId: string, taskId: string) => Promise<void>;
+  updateMember: (memberId: string, updates: { name?: string; role?: string }) => Promise<void>;
+  createLabel: (workspaceId: string, name: string, color: string) => Promise<void>;
+  updateLabel: (labelId: string, updates: { name?: string; color?: string }) => Promise<void>;
+  deleteLabel: (labelId: string) => Promise<void>;
   createFolder: (workspaceId: string, name: string) => Promise<void>;
   updateAutomationActive: (automationId: string, active: boolean) => Promise<void>;
   createAutomation: (workspaceId: string, title: string, triggerDesc: string, actionDesc: string) => Promise<void>;
@@ -321,6 +329,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
+  const deleteDocument = useCallback(async (docId: string) => {
+    await api.deleteDocument(docId);
+    setState(s => ({ ...s, selectedDocId: s.selectedDocId === docId ? null : s.selectedDocId, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const deleteAutomation = useCallback(async (automationId: string) => {
+    await api.deleteAutomation(automationId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const updateComment = useCallback(async (commentId: string, content: string) => {
+    await api.updateComment(commentId, content);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const removeComment = useCallback(async (commentId: string, taskId: string) => {
+    await api.deleteComment(commentId, taskId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const updateMember = useCallback(async (memberId: string, updates: { name?: string; role?: string }) => {
+    await api.updateMember(memberId, updates);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const createLabel = useCallback(async (workspaceId: string, name: string, color: string) => {
+    await api.createLabel(workspaceId, name, color);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const updateLabel = useCallback(async (labelId: string, updates: { name?: string; color?: string }) => {
+    await api.updateLabel(labelId, updates);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const deleteLabel = useCallback(async (labelId: string) => {
+    await api.deleteLabel(labelId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
   const createFolder = useCallback(async (workspaceId: string, name: string) => {
     await api.createFolder(workspaceId, name, 99);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
@@ -371,6 +419,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addTaskLabel, removeTaskLabel, addTaskAssignee, removeTaskAssignee,
       addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember,
       updateBoard, updateFolder, updateColumn, createFolder,
+      deleteDocument, deleteAutomation, updateComment, removeComment, updateMember, createLabel, updateLabel, deleteLabel,
       updateAutomationActive, createAutomation, refreshAll,
       archiveTask, restoreTask, toggleTaskDone,
     }}>

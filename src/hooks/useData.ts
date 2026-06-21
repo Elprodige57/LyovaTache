@@ -472,3 +472,64 @@ export function useCurrentMember(
 
   return member;
 }
+
+// ---- Compléments CRUD (suppression / édition) ----
+export async function deleteDocument(docId: string) {
+  const { error } = await supabase.from('documents').delete().eq('id', docId);
+  return { error };
+}
+
+export async function deleteAutomation(automationId: string) {
+  const { error } = await supabase.from('automations').delete().eq('id', automationId);
+  return { error };
+}
+
+export async function updateComment(commentId: string, content: string) {
+  const { error } = await supabase.from('comments').update({ content: cleanInput(content) }).eq('id', commentId);
+  return { error };
+}
+
+export async function deleteComment(commentId: string, taskId: string) {
+  const { error } = await supabase.from('comments').delete().eq('id', commentId);
+  if (!error) {
+    const { data: t } = await supabase.from('tasks').select('comments_count').eq('id', taskId).single();
+    if (t) await supabase.from('tasks').update({ comments_count: Math.max(0, (t.comments_count || 0) - 1) }).eq('id', taskId);
+  }
+  return { error };
+}
+
+export async function updateMember(memberId: string, updates: { name?: string; role?: string }) {
+  const clean: Record<string, unknown> = {};
+  if (updates.name !== undefined) {
+    const name = cleanInput(updates.name);
+    clean.name = name;
+    clean.initials = name.split(/\s+/).map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+  }
+  if (updates.role !== undefined) clean.role = updates.role;
+  const { error } = await supabase.from('members').update(clean).eq('id', memberId);
+  return { error };
+}
+
+export async function createLabel(workspaceId: string, name: string, color: string) {
+  const { data, error } = await supabase.from('labels').insert({ workspace_id: workspaceId, name: cleanInput(name), color }).select().single();
+  return { data: data as Label | null, error };
+}
+
+export async function updateLabel(labelId: string, updates: { name?: string; color?: string }) {
+  const clean: Record<string, unknown> = {};
+  if (updates.name !== undefined) clean.name = cleanInput(updates.name);
+  if (updates.color !== undefined) clean.color = updates.color;
+  const { error } = await supabase.from('labels').update(clean).eq('id', labelId);
+  return { error };
+}
+
+export async function deleteLabel(labelId: string) {
+  const { error } = await supabase.from('labels').delete().eq('id', labelId);
+  return { error };
+}
+
+// Déplacement de tâche avec position (persiste l'ordre dans la colonne)
+export async function moveTaskOrder(taskId: string, columnId: string, position: number) {
+  const { error } = await supabase.from('tasks').update({ column_id: columnId, position, updated_at: new Date().toISOString() }).eq('id', taskId);
+  return { error };
+}

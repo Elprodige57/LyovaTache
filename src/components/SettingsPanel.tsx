@@ -223,6 +223,9 @@ export function SettingsPanel({ boards = [], members = [], currentMember = null,
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</div>
                         <div style={{ fontSize: 11, color: 'var(--sub2)' }}>{m.role}{m.id === currentMemberId ? ' · vous' : ''}</div>
                       </div>
+                      <button onClick={() => { const n = prompt('Nom du membre', m.name); if (n === null) return; const r = prompt('Rôle (ex: Propriétaire, Membre)', m.role) ?? m.role; app.updateMember(m.id, { name: n.trim() || m.name, role: r.trim() || m.role }); }} title="Modifier le membre" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-ink)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                      </button>
                       {m.id !== currentMemberId && (
                         <button onClick={() => { if (confirm(`Retirer ${m.name} de l'espace ? Action irréversible.`)) app.deleteMember(m.id); }} title="Retirer le membre" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
