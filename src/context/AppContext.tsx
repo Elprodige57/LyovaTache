@@ -58,6 +58,7 @@ interface AppContextValue extends AppState {
   nextMonth: () => void;
   goToday: () => void;
   moveTask: (taskId: string, newColumnId: string) => void;
+  moveTaskTo: (taskId: string, columnId: string, position: number) => void;
   toggleAutomation: (automationId: string) => void;
   toggleChecklistItem: (itemId: string, currentValue: boolean) => void;
   toggleSettings: () => void;
@@ -200,6 +201,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       taskOverrides: { ...s.taskOverrides, [taskId]: { ...(s.taskOverrides[taskId] || {}), column_id: newColumnId } }
     }));
     runOrQueue('moveTaskToColumn', [taskId, newColumnId]);
+  }, []);
+
+  const moveTaskTo = useCallback((taskId: string, columnId: string, position: number) => {
+    setState(s => ({
+      ...s,
+      taskOverrides: { ...s.taskOverrides, [taskId]: { ...(s.taskOverrides[taskId] || {}), column_id: columnId, position } }
+    }));
+    runOrQueue('moveTaskOrder', [taskId, columnId, position]);
   }, []);
 
   const toggleAutomation = useCallback((automationId: string) => {
@@ -411,7 +420,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleTheme, toggleDensity, toggleSidebar, toggleWs,
       toggleFilterLabel, clearFilterLabels, setSortMode, toggleFocus, setAutoTab, toggleBuilder,
       openDoc, setAgendaView, prevMonth, nextMonth, goToday,
-      moveTask, toggleAutomation, toggleChecklistItem,
+      moveTask, moveTaskTo, toggleAutomation, toggleChecklistItem,
       toggleSettings, toggleSearch, toggleCreateFolder,
       openCreateBoard, closeCreateBoard, setPreferredBoard,
       addTask, patchTask, removeTask, addColumn, postComment,

@@ -20,6 +20,7 @@ const REGISTRY: Record<string, (...args: any[]) => Promise<unknown>> = {
   updateTask: (id, u) => api.updateTask(id, u),
   deleteTask: (id) => api.deleteTask(id),
   moveTaskToColumn: (id, c) => api.moveTaskToColumn(id, c),
+  moveTaskOrder: (id, c, p) => api.moveTaskOrder(id, c, p),
   createColumn: (b, n, c, p) => api.createColumn(b, n, c, p),
   addComment: (t, m, c) => api.addComment(t, m, c),
   updateChecklistItem: (i, u) => api.updateChecklistItem(i, u),

@@ -60,7 +60,10 @@ export function Kanban({ columns, tasks }: KanbanProps) {
   const handleDrop = (colId: string) => (e: React.DragEvent) => {
     e.preventDefault();
     if (dragTaskId) {
-      app.moveTask(dragTaskId, colId);
+      // Position = fin de la colonne cible (l'ordre est ainsi persisté)
+      const targetTasks = tasks.filter(t => (app.taskOverrides[t.id]?.column_id ?? t.column_id) === colId && t.id !== dragTaskId);
+      const maxPos = targetTasks.reduce((m, t) => Math.max(m, t.position), -1);
+      app.moveTaskTo(dragTaskId, colId, maxPos + 1);
     }
     setDragTaskId(null);
     setDragOverColId(null);
