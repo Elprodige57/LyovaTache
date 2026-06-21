@@ -29,6 +29,7 @@ interface AppState {
   createFolderOpen: boolean;
   createBoardOpen: boolean;
   taskOverrides: Record<string, Partial<Task>>;
+  pendingTasks: Task[];
   automationOverrides: Record<string, Partial<Automation>>;
   checklistOverrides: Record<string, boolean>;
   refreshCounter: number;
@@ -71,6 +72,7 @@ interface AppContextValue extends AppState {
   setPreferredBoard: (memberId: string, boardId: string | null) => Promise<void>;
   // CRUD
   addTask: (columnId: string, boardId: string, title: string) => Promise<void>;
+  clearPendingTasks: () => void;
   patchTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   removeTask: (taskId: string) => Promise<void>;
   addColumn: (boardId: string, name: string, color: string) => Promise<void>;
@@ -137,6 +139,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     createFolderOpen: false,
     createBoardOpen: false,
     taskOverrides: {},
+    pendingTasks: [],
     automationOverrides: {},
     checklistOverrides: {},
     refreshCounter: 0,
@@ -238,9 +241,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // CRUD
   const addTask = useCallback(async (columnId: string, boardId: string, title: string) => {
-    await runOrQueue('createTask', [{ column_id: columnId, board_id: boardId, title }]);
-    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+    const res = await runOrQueue('createTask', [{ column_id: columnId, board_id: boardId, title }]);
+    if (res.queued) {
+      // Hors-ligne : carte optimiste affichée jusqu'à la synchronisation
+      const tmp: Task = {
+        id: 'pending-' + Math.random().toString(36).slice(2), column_id: columnId, board_id: boardId,
+        title, description: null, priority: 'medium', due_date: null, estimated_hours: 0, spent_hours: 0,
+        position: 9999, is_blocked: false, block_reason: null, is_done: false, archived_at: null,
+        comments_count: 0, files_count: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        labels: [], assignees: [], checklist_items: [],
+      };
+      setState(s => ({ ...s, pendingTasks: [...s.pendingTasks, tmp] }));
+    } else {
+      setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+    }
   }, []);
+
+  const clearPendingTasks = useCallback(() => setState(s => (s.pendingTasks.length ? { ...s, pendingTasks: [] } : s)), []);
 
   const patchTask = useCallback(async (taskId: string, updates: Partial<Task>) => {
     await runOrQueue('updateTask', [taskId, updates]);
@@ -427,7 +444,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       moveTask, moveTaskTo, toggleAutomation, toggleChecklistItem,
       toggleSettings, toggleSearch, toggleCreateFolder,
       openCreateBoard, closeCreateBoard, setPreferredBoard,
-      addTask, patchTask, removeTask, addColumn, postComment,
+      addTask, clearPendingTasks, patchTask, removeTask, addColumn, postComment,
       addChecklistItem, removeChecklistItem,
       addTaskLabel, removeTaskLabel, addTaskAssignee, removeTaskAssignee,
       addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember,

@@ -90,7 +90,7 @@ function AppContent({ session }: { session: Session | null }) {
 
   // Rejoue les écritures hors-ligne au retour du réseau (et au chargement)
   useEffect(() => {
-    const doFlush = async () => { const n = await flushQueue(); if (n > 0) app.refreshAll(); };
+    const doFlush = async () => { const n = await flushQueue(); if (n > 0) { app.clearPendingTasks(); app.refreshAll(); } };
     window.addEventListener('online', doFlush);
     if (navigator.onLine) doFlush();
     return () => window.removeEventListener('online', doFlush);
@@ -186,7 +186,7 @@ function AppContent({ session }: { session: Session | null }) {
           )}
 
           {isBoard && app.boardView === 'kanban' && (
-            <Kanban columns={columns} tasks={effectiveTasks} members={members} />
+            <Kanban columns={columns} tasks={[...effectiveTasks, ...app.pendingTasks.filter(p => p.board_id === activeBoardId)]} members={members} />
           )}
 
           {isBoard && app.boardView === 'agenda' && (
