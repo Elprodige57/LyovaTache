@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { createNotification } from '../hooks/useData';
 import type { Task, Column, Member, Label } from '../types';
 
 interface TaskDrawerProps {
@@ -92,6 +93,7 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
     if (!c || !currentMember || sendingComment) return;
     setSendingComment(true);
     await app.postComment(task.id, currentMember.id, c);
+    await createNotification('00000000-0000-0000-0000-000000000001', `${currentMember.name} a commenté « ${task.title} »`, '💬');
     setNewComment('');
     setSendingComment(false);
   };

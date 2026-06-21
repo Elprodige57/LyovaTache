@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { LoginScreen } from './components/LoginScreen';
@@ -20,9 +20,9 @@ import { MyTasks } from './views/MyTasks';
 import { ArchivesView } from './views/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
-  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember
+  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications
 } from './hooks/useData';
-import type { Task } from './types';
+import type { Task, Notification } from './types';
 
 const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
@@ -38,6 +38,7 @@ function AppContent({ session }: { session: Session | null }) {
   const labels = useLabels(WORKSPACE_ID);
   const { automations } = useAutomations(WORKSPACE_ID, app.refreshCounter);
   const { documents } = useDocuments(WORKSPACE_ID, app.refreshCounter);
+  const notifications = useNotifications(WORKSPACE_ID, app.refreshCounter);
 
   const activeBoardId = app.activeBoardId ?? MAIN_BOARD_ID;
   const { board } = useBoard(app.screen === 'board' ? activeBoardId : null, app.refreshCounter);
@@ -119,7 +120,7 @@ function AppContent({ session }: { session: Session | null }) {
     }}>
       {/* Sidebar */}
       {!app.collapsed && !app.focus && (
-        <Sidebar workspace={workspace} folders={folders} currentMember={currentMember} />
+        <Sidebar workspace={workspace} folders={folders} currentMember={currentMember} notifUnread={notifications.filter(n => !n.is_read).length} />
       )}
 
       {/* Main */}
@@ -177,7 +178,7 @@ function AppContent({ session }: { session: Session | null }) {
 
           {app.screen === 'notifications' && (
             <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '24px 28px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
-              <NotificationsPlaceholder />
+              <NotificationsView notifications={notifications} workspaceId={WORKSPACE_ID} />
             </div>
           )}
 
@@ -224,48 +225,46 @@ function AppContent({ session }: { session: Session | null }) {
   );
 }
 
-function NotificationsPlaceholder() {
-  const [read, setRead] = React.useState<Set<number>>(new Set([3, 4]));
-  const notifications = [
-    { icon: '💬', text: 'Hugo a commenté « Sessions PostgreSQL »', time: 'il y a 12 min' },
-    { icon: '🔄', text: 'Naïma a déplacé « Liaison inter-bureaux » en revue', time: 'il y a 40 min' },
-    { icon: '⚠️', text: 'Tâche « Authentification » en retard de 1 jour', time: 'il y a 1 h' },
-    { icon: '✅', text: 'Hugo a complété « Sessions PostgreSQL »', time: 'hier' },
-    { icon: '👤', text: 'Tomas vous a assigné « Web Push (Service Worker) »', time: 'il y a 2 j' },
-  ];
+function NotificationsView({ notifications, workspaceId }: { notifications: Notification[]; workspaceId: string }) {
+  const app = useApp();
+  const unread = notifications.filter(n => !n.is_read).length;
+  const timeAgo = (iso: string) => {
+    const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (m < 1) return "à l'instant";
+    if (m < 60) return `il y a ${m} min`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `il y a ${h} h`;
+    return `il y a ${Math.floor(h / 24)} j`;
+  };
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
         <span style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--ink)' }}>Notifications</span>
-        {read.size < notifications.length && (
-          <button onClick={() => setRead(new Set(notifications.map((_, i) => i)))} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid var(--line2)', borderRadius: 7, padding: '5px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: 'var(--sub2)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
+        {unread > 0 && (
+          <button onClick={() => app.markAllNotifsRead(workspaceId)} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid var(--line2)', borderRadius: 7, padding: '5px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: 'var(--sub2)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
             Tout marquer lu
           </button>
         )}
       </div>
-      <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
-        {notifications.map((n, i) => {
-          const isRead = read.has(i);
-          return (
-            <div key={i} onClick={() => setRead(prev => { const s = new Set(prev); s.add(i); return s; })} style={{
-              display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px',
-              borderBottom: i < notifications.length - 1 ? '1px solid var(--line)' : 'none',
-              background: isRead ? 'transparent' : 'var(--accent-soft)',
-              cursor: 'pointer', transition: 'background .1s',
-            }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-              onMouseLeave={e => (e.currentTarget.style.background = isRead ? 'transparent' : 'var(--accent-soft)')}
-            >
+      {notifications.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--sub2)', fontSize: 14 }}>Aucune notification.</div>
+      ) : (
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+          {notifications.map((n, i) => (
+            <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderBottom: i < notifications.length - 1 ? '1px solid var(--line)' : 'none', background: n.is_read ? 'transparent' : 'var(--accent-soft)', transition: 'background .1s' }}>
               <span style={{ fontSize: 18, flexShrink: 0 }}>{n.icon}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13.5, color: 'var(--ink)', fontWeight: isRead ? 400 : 600 }}>{n.text}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--sub2)', marginTop: 2 }}>{n.time}</div>
+              <div style={{ flex: 1, minWidth: 0, cursor: n.is_read ? 'default' : 'pointer' }} onClick={() => { if (!n.is_read) app.markNotifRead(n.id); }}>
+                <div style={{ fontSize: 13.5, color: 'var(--ink)', fontWeight: n.is_read ? 400 : 600 }}>{n.message}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--sub2)', marginTop: 2 }}>{timeAgo(n.created_at)}</div>
               </div>
-              {!isRead && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />}
+              {!n.is_read && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginTop: 4 }} />}
+              <button onClick={() => app.removeNotification(n.id)} title="Supprimer" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 2, borderRadius: 5, flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

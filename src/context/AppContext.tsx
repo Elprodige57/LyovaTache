@@ -101,6 +101,9 @@ interface AppContextValue extends AppState {
   createLabel: (workspaceId: string, name: string, color: string) => Promise<void>;
   updateLabel: (labelId: string, updates: { name?: string; color?: string }) => Promise<void>;
   deleteLabel: (labelId: string) => Promise<void>;
+  markNotifRead: (id: string) => Promise<void>;
+  markAllNotifsRead: (workspaceId: string) => Promise<void>;
+  removeNotification: (id: string) => Promise<void>;
   createFolder: (workspaceId: string, name: string) => Promise<void>;
   updateAutomationActive: (automationId: string, active: boolean) => Promise<void>;
   createAutomation: (workspaceId: string, title: string, triggerDesc: string, actionDesc: string) => Promise<void>;
@@ -399,6 +402,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
+  const markNotifRead = useCallback(async (id: string) => {
+    await api.markNotificationRead(id);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const markAllNotifsRead = useCallback(async (workspaceId: string) => {
+    await api.markAllNotificationsRead(workspaceId);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
+  const removeNotification = useCallback(async (id: string) => {
+    await api.deleteNotification(id);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
   const createFolder = useCallback(async (workspaceId: string, name: string) => {
     await api.createFolder(workspaceId, name, 99);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
@@ -450,6 +468,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember,
       updateBoard, updateFolder, updateColumn, createFolder,
       deleteDocument, deleteAutomation, updateComment, removeComment, updateMember, createLabel, updateLabel, deleteLabel,
+      markNotifRead, markAllNotifsRead, removeNotification,
       updateAutomationActive, createAutomation, refreshAll,
       archiveTask, restoreTask, toggleTaskDone,
     }}>

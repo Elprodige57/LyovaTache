@@ -128,6 +128,16 @@ export interface Document {
   children?: Document[];
 }
 
+export interface Notification {
+  id: string;
+  workspace_id: string;
+  member_id: string | null;
+  icon: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives';
 export type BoardView = 'kanban' | 'agenda' | 'automations';
 export type Theme = 'light' | 'dark';

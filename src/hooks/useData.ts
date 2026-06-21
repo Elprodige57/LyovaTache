@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { loadCache, saveCache } from '../lib/cache';
 import { cleanInput } from '../lib/sanitizer';
-import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document, ChecklistItem } from '../types';
+import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document, ChecklistItem, Notification } from '../types';
 
 export function useWorkspace(refreshKey = 0) {
   const [workspace, setWorkspace] = useState<Workspace | null>(() => loadCache<Workspace | null>('workspace', null));
@@ -531,5 +531,39 @@ export async function deleteLabel(labelId: string) {
 // Déplacement de tâche avec position (persiste l'ordre dans la colonne)
 export async function moveTaskOrder(taskId: string, columnId: string, position: number) {
   const { error } = await supabase.from('tasks').update({ column_id: columnId, position, updated_at: new Date().toISOString() }).eq('id', taskId);
+  return { error };
+}
+
+// ---- Notifications ----
+export function useNotifications(workspaceId: string | undefined, refreshKey = 0) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    setNotifications(loadCache<Notification[]>('notifications_' + workspaceId, []));
+    supabase.from('notifications').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(50)
+      .then(({ data }) => { if (data) { setNotifications(data as Notification[]); saveCache('notifications_' + workspaceId, data); } });
+  }, [workspaceId, refreshKey]);
+
+  return notifications;
+}
+
+export async function createNotification(workspaceId: string, message: string, icon = '🔔', memberId: string | null = null) {
+  const { error } = await supabase.from('notifications').insert({ workspace_id: workspaceId, member_id: memberId, icon, message: cleanInput(message) });
+  return { error };
+}
+
+export async function markNotificationRead(id: string) {
+  const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  return { error };
+}
+
+export async function markAllNotificationsRead(workspaceId: string) {
+  const { error } = await supabase.from('notifications').update({ is_read: true }).eq('workspace_id', workspaceId).eq('is_read', false);
+  return { error };
+}
+
+export async function deleteNotification(id: string) {
+  const { error } = await supabase.from('notifications').delete().eq('id', id);
   return { error };
 }
