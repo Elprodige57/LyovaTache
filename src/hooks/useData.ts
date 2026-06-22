@@ -16,7 +16,7 @@ export function useWorkspace(refreshKey = 0) {
   return { workspace, loading };
 }
 
-export async function updateWorkspace(workspaceId: string, updates: { name?: string }) {
+export async function updateWorkspace(workspaceId: string, updates: { name?: string; plan?: string }) {
   const { error } = await supabase.from('workspaces').update(updates).eq('id', workspaceId);
   return { error };
 }

@@ -19,6 +19,7 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
   const app = useApp();
   const [tab, setTab] = useState<'general' | 'notifications' | 'account'>('general');
   const [workspaceName, setWorkspaceName] = useState(workspace?.name ?? 'Lyova Tech');
+  const [planValue, setPlanValue] = useState(workspace?.plan ?? 'Plan Équipe');
   const [emailNotif, setEmailNotif] = useState(true);
   const [slackNotif, setSlackNotif] = useState(false);
   const [dailyDigest, setDailyDigest] = useState(true);
@@ -31,6 +32,7 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
 
   // Charge le nom d'espace et les préférences de notif existants
   useEffect(() => { if (workspace?.name) setWorkspaceName(workspace.name); }, [workspace?.name]);
+  useEffect(() => { if (workspace?.plan) setPlanValue(workspace.plan); }, [workspace?.plan]);
   useEffect(() => {
     try {
       const raw = localStorage.getItem('lyova_notif_prefs');
@@ -40,7 +42,7 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
 
   const handleSave = async () => {
     setSaving(true);
-    if (workspace?.id) await updateWorkspace(workspace.id, { name: workspaceName.trim() });
+    if (workspace?.id) await updateWorkspace(workspace.id, { name: workspaceName.trim(), plan: planValue });
     try { localStorage.setItem('lyova_notif_prefs', JSON.stringify({ email: emailNotif, slack: slackNotif, daily: dailyDigest })); } catch { /* ignore */ }
     app.refreshAll();
     setSaving(false);
@@ -133,6 +135,16 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Espace de travail</div>
                 <input value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} style={{ width: '100%', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Plan d'équipe</div>
+                <select value={planValue} onChange={e => setPlanValue(e.target.value)} style={{ width: '100%', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", cursor: 'pointer' }}>
+                  <option value="Gratuit">Gratuit</option>
+                  <option value="Plan Équipe">Équipe</option>
+                  <option value="Pro">Pro</option>
+                  <option value="Entreprise">Entreprise</option>
+                </select>
+                <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 6 }}>Affiché dans la barre latérale. Clique « Enregistrer » pour appliquer.</div>
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Bureau préféré</div>
@@ -235,7 +247,7 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Plan</div>
                 <div style={{ padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--accent-soft)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-ink)' }}>Plan Équipe</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-ink)' }}>{workspace?.plan ?? 'Plan Équipe'}</div>
                   <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 2 }}>5 membres · Automations · Documents</div>
                 </div>
               </div>
