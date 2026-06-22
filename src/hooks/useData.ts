@@ -69,15 +69,15 @@ export function useFolders(workspaceId: string | undefined, refreshKey = 0) {
   return { folders, reload };
 }
 
-export function useLabels(workspaceId: string | undefined) {
+export function useLabels(workspaceId: string | undefined, refreshKey = 0) {
   const [labels, setLabels] = useState<Label[]>([]);
 
   useEffect(() => {
     if (!workspaceId) return;
     setLabels(loadCache<Label[]>('labels_' + workspaceId, []));
-    supabase.from('labels').select('*').eq('workspace_id', workspaceId)
+    supabase.from('labels').select('*').eq('workspace_id', workspaceId).order('created_at')
       .then(({ data }) => { if (data) { setLabels(data); saveCache('labels_' + workspaceId, data); } });
-  }, [workspaceId]);
+  }, [workspaceId, refreshKey]);
 
   return labels;
 }

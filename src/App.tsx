@@ -36,7 +36,7 @@ function AppContent({ session }: { session: Session | null }) {
   const workspaces = useWorkspaces(app.refreshCounter);
   const members = useMembers(WORKSPACE_ID, app.refreshCounter);
   const { folders } = useFolders(WORKSPACE_ID, app.refreshCounter);
-  const labels = useLabels(WORKSPACE_ID);
+  const labels = useLabels(WORKSPACE_ID, app.refreshCounter);
   const { automations } = useAutomations(WORKSPACE_ID, app.refreshCounter);
   const { documents } = useDocuments(WORKSPACE_ID, app.refreshCounter);
   const notifications = useNotifications(WORKSPACE_ID, app.refreshCounter);
