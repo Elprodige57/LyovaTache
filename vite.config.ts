@@ -28,7 +28,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,woff,woff2}'],
         navigateFallback: '/index.html',
       },
-      devOptions: { enabled: true },
+      devOptions: { enabled: false },
     }),
   ],
   optimizeDeps: {
