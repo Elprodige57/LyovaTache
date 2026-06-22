@@ -36,6 +36,12 @@ export async function createWorkspace(name: string) {
   return { data: ws as Workspace | null, error };
 }
 
+// Supprime un espace de travail (cascade : membres, dossiers, Bureaux, tâches, étiquettes…)
+export async function deleteWorkspace(id: string) {
+  const { error } = await supabase.from('workspaces').delete().eq('id', id);
+  return { error };
+}
+
 export async function updateWorkspace(workspaceId: string, updates: { name?: string; plan?: string }) {
   const { error } = await supabase.from('workspaces').update(updates).eq('id', workspaceId);
   return { error };

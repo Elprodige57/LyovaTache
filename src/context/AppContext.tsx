@@ -41,6 +41,7 @@ interface AppContextValue extends AppState {
   openBoard: (boardId: string) => void;
   setActiveWorkspace: (id: string) => void;
   createWorkspace: (name: string) => Promise<void>;
+  deleteWorkspace: (id: string) => Promise<void>;
   setBoardView: (view: BoardView) => void;
   openTask: (taskId: string) => void;
   closeTask: () => void;
@@ -180,6 +181,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try { localStorage.setItem('lyova_ws', data.id); } catch { /* ignore */ }
       setState(s => ({ ...s, activeWorkspaceId: data.id, screen: 'dashboard', activeBoardId: null, wsOpen: false, refreshCounter: s.refreshCounter + 1 }));
     }
+  }, []);
+
+  const deleteWorkspace = useCallback(async (id: string) => {
+    await api.deleteWorkspace(id);
+    setState(s => ({ ...s, screen: 'dashboard', activeBoardId: null, wsOpen: false, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const setBoardView = useCallback((view: BoardView) => setState(s => ({ ...s, boardView: view })), []);
@@ -471,7 +477,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       ...state,
-      goTo, openBoard, setActiveWorkspace, createWorkspace, setBoardView, openTask, closeTask,
+      goTo, openBoard, setActiveWorkspace, createWorkspace, deleteWorkspace, setBoardView, openTask, closeTask,
       openAI, closeAI, summarizeTask,
       toggleTheme, toggleDensity, toggleSidebar, toggleWs,
       toggleFilterLabel, clearFilterLabels, setSortMode, setGroupMode, toggleFocus, setAutoTab, toggleBuilder,

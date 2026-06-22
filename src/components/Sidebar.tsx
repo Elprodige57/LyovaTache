@@ -121,6 +121,25 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
                       <path d="M5 12l4 4L19 6" />
                     </svg>
                   )}
+                  {workspaces.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Supprimer l'espace « ${w.name} » et tout son contenu (Bureaux, tâches, membres…) ? Action irréversible.`)) return;
+                        if (w.id === activeWorkspaceId) {
+                          const other = workspaces.find(x => x.id !== w.id);
+                          if (other) app.setActiveWorkspace(other.id);
+                        }
+                        app.deleteWorkspace(w.id);
+                      }}
+                      title="Supprimer l'espace"
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 2, borderRadius: 5, flexShrink: 0 }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                    </button>
+                  )}
                 </div>
               );
             })}
