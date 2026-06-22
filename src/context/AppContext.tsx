@@ -96,7 +96,7 @@ interface AppContextValue extends AppState {
   deleteMember: (memberId: string) => Promise<void>;
   updateBoard: (boardId: string, updates: { name?: string; color?: string; description?: string }) => Promise<void>;
   updateFolder: (folderId: string, updates: { name?: string }) => Promise<void>;
-  updateColumn: (columnId: string, updates: { name?: string; color?: string; wip_limit?: number }) => Promise<void>;
+  updateColumn: (columnId: string, updates: { name?: string; color?: string; wip_limit?: number; position?: number }) => Promise<void>;
   deleteDocument: (docId: string) => Promise<void>;
   deleteAutomation: (automationId: string) => Promise<void>;
   updateComment: (commentId: string, content: string) => Promise<void>;
@@ -380,7 +380,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
-  const updateColumn = useCallback(async (columnId: string, updates: { name?: string; color?: string; wip_limit?: number }) => {
+  const updateColumn = useCallback(async (columnId: string, updates: { name?: string; color?: string; wip_limit?: number; position?: number }) => {
     await api.updateColumn(columnId, updates);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);

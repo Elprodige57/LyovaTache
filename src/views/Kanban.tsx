@@ -104,6 +104,16 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
     setSavingCol(false);
   };
 
+  const moveColumn = async (colId: string, dir: 'left' | 'right') => {
+    const sorted = [...columns].sort((a, b) => a.position - b.position);
+    const i = sorted.findIndex(c => c.id === colId);
+    const j = dir === 'left' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= sorted.length) return;
+    const a = sorted[i], b = sorted[j];
+    await app.updateColumn(a.id, { position: b.position });
+    await app.updateColumn(b.id, { position: a.position });
+  };
+
   const openAddCard = (colId: string) => {
     setAddingCardColId(colId);
     setNewCardTitle('');
@@ -172,10 +182,16 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
                     {col.wip_limit > 0 ? `${colTasks.length} / ${col.wip_limit}` : String(colTasks.length)}
                   </span>
                   {col.kind === 'status' && (<>
+                  <div onClick={() => moveColumn(col.id, 'left')} title="Déplacer la colonne à gauche" style={{ marginLeft: 'auto', cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'background .1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                  </div>
+                  <div onClick={() => moveColumn(col.id, 'right')} title="Déplacer la colonne à droite" style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'background .1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft2)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                  </div>
                   <div
                     onClick={() => openAddCard(col.id)}
                     title="Ajouter une carte"
-                    style={{ marginLeft: 'auto', cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'background .1s' }}
+                    style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'background .1s' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft2)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
