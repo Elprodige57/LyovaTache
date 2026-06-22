@@ -271,18 +271,20 @@ function NotificationsView({ notifications, workspaceId }: { notifications: Noti
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [guest, setGuest] = useState(() => localStorage.getItem('lyova_guest') === '1');
+  // Par défaut on entre directement dans l'app (mode démo). L'écran de connexion
+  // ne s'affiche que si l'utilisateur le demande explicitement (lyova_mode = 'login').
+  const [guest, setGuest] = useState(() => localStorage.getItem('lyova_mode') !== 'login');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      if (s) { localStorage.removeItem('lyova_guest'); setGuest(false); }
+      if (s) { localStorage.removeItem('lyova_mode'); setGuest(false); }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const enterGuest = () => { localStorage.setItem('lyova_guest', '1'); setGuest(true); };
+  const enterGuest = () => { localStorage.removeItem('lyova_mode'); setGuest(true); };
 
   if (!guest && session === undefined) {
     return (

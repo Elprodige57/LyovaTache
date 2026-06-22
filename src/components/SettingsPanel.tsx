@@ -261,7 +261,7 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
                   ))}
                 </div>
               </div>
-              <button onClick={() => { if (isGuest) { localStorage.removeItem('lyova_guest'); window.location.reload(); } else { supabase.auth.signOut(); } }} style={{ background: 'transparent', color: isGuest ? 'var(--accent-ink)' : '#ef4444', border: `1px solid ${isGuest ? 'var(--line2)' : 'rgba(239,68,68,0.35)'}`, borderRadius: 10, padding: '10px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <button onClick={() => { if (isGuest) { localStorage.setItem('lyova_mode', 'login'); window.location.reload(); } else { supabase.auth.signOut(); } }} style={{ background: 'transparent', color: isGuest ? 'var(--accent-ink)' : '#ef4444', border: `1px solid ${isGuest ? 'var(--line2)' : 'rgba(239,68,68,0.35)'}`, borderRadius: 10, padding: '10px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
                 {isGuest ? 'Se connecter (quitter le mode démo)' : 'Se déconnecter'}
               </button>
