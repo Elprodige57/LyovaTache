@@ -4,16 +4,36 @@ import { loadCache, saveCache } from '../lib/cache';
 import { cleanInput } from '../lib/sanitizer';
 import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document, ChecklistItem, Notification } from '../types';
 
-export function useWorkspace(refreshKey = 0) {
-  const [workspace, setWorkspace] = useState<Workspace | null>(() => loadCache<Workspace | null>('workspace', null));
+export function useWorkspace(workspaceId: string | undefined, refreshKey = 0) {
+  const [workspace, setWorkspace] = useState<Workspace | null>(() => loadCache<Workspace | null>('workspace_' + (workspaceId ?? ''), null));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('workspaces').select('*').limit(1).single()
-      .then(({ data }) => { if (data) { setWorkspace(data); saveCache('workspace', data); } setLoading(false); });
-  }, [refreshKey]);
+    if (!workspaceId) return;
+    supabase.from('workspaces').select('*').eq('id', workspaceId).single()
+      .then(({ data }) => { if (data) { setWorkspace(data); saveCache('workspace_' + workspaceId, data); } setLoading(false); });
+  }, [workspaceId, refreshKey]);
 
   return { workspace, loading };
+}
+
+// Liste de tous les espaces de travail (pour le sélecteur)
+export function useWorkspaces(refreshKey = 0) {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(() => loadCache<Workspace[]>('workspaces_all', []));
+  useEffect(() => {
+    supabase.from('workspaces').select('*').order('created_at')
+      .then(({ data }) => { if (data) { setWorkspaces(data as Workspace[]); saveCache('workspaces_all', data); } });
+  }, [refreshKey]);
+  return workspaces;
+}
+
+// Crée un espace de travail + un membre propriétaire par défaut (pour qu'il soit utilisable)
+export async function createWorkspace(name: string) {
+  const { data: ws, error } = await supabase.from('workspaces').insert({ name: cleanInput(name), plan: 'Plan Équipe' }).select().single();
+  if (ws) {
+    await supabase.from('members').insert({ workspace_id: ws.id, name: 'Moi', initials: 'MO', color: '#5b50e8', role: 'Propriétaire' });
+  }
+  return { data: ws as Workspace | null, error };
 }
 
 export async function updateWorkspace(workspaceId: string, updates: { name?: string; plan?: string }) {

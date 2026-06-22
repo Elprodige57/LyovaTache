@@ -3,6 +3,8 @@ import type { Workspace, Folder, Member } from '../types';
 
 interface SidebarProps {
   workspace: Workspace | null;
+  workspaces?: Workspace[];
+  activeWorkspaceId?: string;
   folders: Folder[];
   currentMember: Member | null;
   notifUnread?: number;
@@ -16,7 +18,7 @@ function Icon({ d, size = 16, stroke = 'currentColor', fill = 'none', sw = 2 }: 
   );
 }
 
-export function Sidebar({ workspace, folders, currentMember, notifUnread = 0 }: SidebarProps) {
+export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders, currentMember, notifUnread = 0 }: SidebarProps) {
   const app = useApp();
 
   const navItems = [
@@ -92,37 +94,38 @@ export function Sidebar({ workspace, folders, currentMember, notifUnread = 0 }: 
             border: '1px solid var(--line)', borderRadius: 11, padding: 5,
             boxShadow: 'var(--shadow-md)', animation: 'lyPop .15s ease',
           }}>
-            {[
-              { name: 'Lyova Tech', color: '#5b50e8', initial: 'L', active: true },
-              { name: 'Studio Perso', color: '#f59e0b', initial: 'S', active: false },
-              { name: 'Client — Acme', color: '#10b981', initial: 'A', active: false },
-            ].map(w => (
-              <div
-                key={w.name}
-                onClick={() => app.toggleWs()}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '7px 8px', borderRadius: 8, cursor: 'pointer',
-                  background: w.active ? 'var(--soft)' : 'transparent',
-                  transition: 'background .1s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-                onMouseLeave={e => (e.currentTarget.style.background = w.active ? 'var(--soft)' : 'transparent')}
-              >
-                <div style={{
-                  width: 24, height: 24, borderRadius: 7,
-                  background: w.color, color: '#fff', fontSize: 11, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{w.initial}</div>
-                <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: 'var(--ink)' }}>{w.name}</span>
-                {w.active && (
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M5 12l4 4L19 6" />
-                  </svg>
-                )}
-              </div>
-            ))}
+            {workspaces.map(w => {
+              const active = w.id === activeWorkspaceId;
+              const initial = (w.name?.[0] ?? 'W').toUpperCase();
+              return (
+                <div
+                  key={w.id}
+                  onClick={() => { if (active) { app.toggleWs(); } else { app.setActiveWorkspace(w.id); } }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 9,
+                    padding: '7px 8px', borderRadius: 8, cursor: 'pointer',
+                    background: active ? 'var(--soft)' : 'transparent',
+                    transition: 'background .1s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = active ? 'var(--soft)' : 'transparent')}
+                >
+                  <div style={{
+                    width: 24, height: 24, borderRadius: 7,
+                    background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{initial}</div>
+                  <span style={{ fontSize: 13, fontWeight: 600, flex: 1, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{w.name}</span>
+                  {active && (
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M5 12l4 4L19 6" />
+                    </svg>
+                  )}
+                </div>
+              );
+            })}
             <div
+              onClick={() => { const n = prompt('Nom du nouvel espace de travail'); if (n && n.trim()) app.createWorkspace(n.trim()); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
                 padding: '7px 8px', borderRadius: 8, cursor: 'pointer', color: 'var(--sub)',

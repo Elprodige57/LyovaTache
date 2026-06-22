@@ -20,19 +20,20 @@ import { MyTasks } from './views/MyTasks';
 import { ArchivesView } from './views/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
-  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications
+  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces
 } from './hooks/useData';
 import type { Task, Notification } from './types';
 
-const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
 const GUEST_MEMBER_ID = '00000000-0000-0000-0001-000000000001'; // Camille (mode démo sans compte)
 
 function AppContent({ session }: { session: Session | null }) {
   const app = useApp();
   const isGuest = !session;
+  const WORKSPACE_ID = app.activeWorkspaceId; // espace de travail actif (dynamique)
 
-  const { workspace } = useWorkspace(app.refreshCounter);
+  const { workspace } = useWorkspace(WORKSPACE_ID, app.refreshCounter);
+  const workspaces = useWorkspaces(app.refreshCounter);
   const members = useMembers(WORKSPACE_ID, app.refreshCounter);
   const { folders } = useFolders(WORKSPACE_ID, app.refreshCounter);
   const labels = useLabels(WORKSPACE_ID);
@@ -63,7 +64,7 @@ function AppContent({ session }: { session: Session | null }) {
     WORKSPACE_ID,
     app.refreshCounter,
   );
-  const currentMember = session ? authedMember : (members.find(m => m.id === GUEST_MEMBER_ID) ?? null);
+  const currentMember = session ? authedMember : (members.find(m => m.id === GUEST_MEMBER_ID) ?? members[0] ?? null);
   const currentMemberId = currentMember?.id ?? '';
   const boardMembers = board?.members ?? [];
 
@@ -120,7 +121,7 @@ function AppContent({ session }: { session: Session | null }) {
     }}>
       {/* Sidebar */}
       {!app.collapsed && !app.focus && (
-        <Sidebar workspace={workspace} folders={folders} currentMember={currentMember} notifUnread={notifications.filter(n => !n.is_read).length} />
+        <Sidebar workspace={workspace} workspaces={workspaces} activeWorkspaceId={app.activeWorkspaceId} folders={folders} currentMember={currentMember} notifUnread={notifications.filter(n => !n.is_read).length} />
       )}
 
       {/* Main */}
