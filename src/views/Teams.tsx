@@ -9,6 +9,7 @@ import {
 import { ROLE_LABELS, SCOPE_LABELS } from '../lib/access';
 import { confirmDialog, promptDialog } from '../lib/dialog';
 import { InviteWizard } from '../components/InviteWizard';
+import { AccessEditor } from '../components/AccessEditor';
 
 interface TeamsProps {
   workspaceId: string;
@@ -25,7 +26,15 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
   const access = useMemberAccess(workspaceId, app.refreshCounter);
   const invitations = useInvitations(workspaceId, app.refreshCounter);
   const [wizard, setWizard] = useState(false);
-  const membersById = new Map(members.map((m) => [m.id, m]));
+  const [editAccess, setEditAccess] = useState<Member | null>(null);
+  const folderName = new Map(folders.map((f) => [f.id, f.name]));
+  const boardName = new Map(folders.flatMap((f) => (f.boards || []).map((b) => [b.id, b.name] as [string, string])));
+
+  function scopeDetail(a: ReturnType<typeof access.find>): string {
+    if (!a || a.scope === 'full') return "Tout l'espace";
+    if (a.scope === 'folders') return 'Dossiers : ' + (a.folderIds.map((id) => folderName.get(id)).filter(Boolean).join(', ') || '—');
+    return 'Tableaux : ' + (a.boardIds.map((id) => boardName.get(id)).filter(Boolean).join(', ') || '—');
+  }
 
   async function newTeam() {
     const name = await promptDialog('Nom de l\'équipe', '');
@@ -120,7 +129,7 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
         <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>Membres & accès à l'espace</div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={th}>Membre</th><th style={th}>Périmètre</th><th style={th}>Rôle</th><th style={th}></th></tr></thead>
+            <thead><tr><th style={th}>Membre</th><th style={th}>Périmètre</th><th style={th}>Rôle</th><th style={{ ...th, textAlign: 'right' }}>Accès</th></tr></thead>
             <tbody>
               {members.map((m) => {
                 const a = access.find((x) => x.member_id === m.id);
@@ -128,7 +137,7 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
                 return (
                   <tr key={m.id}>
                     <td style={td}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ width: 24, height: 24, borderRadius: '50%', background: m.color, color: '#fff', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{m.initials}</span><span style={{ color: 'var(--ink)' }}>{m.name}</span></span></td>
-                    <td style={{ ...td, color: 'var(--sub)' }}>{isOwner ? 'Tout (propriétaire)' : SCOPE_LABELS[a?.scope ?? 'full']}</td>
+                    <td style={{ ...td, color: 'var(--sub)' }}>{isOwner ? 'Tout (propriétaire)' : scopeDetail(a)}</td>
                     <td style={td}>
                       {isOwner ? <span style={{ color: 'var(--sub2)' }}>Propriétaire</span> : (
                         <select value={a?.role ?? 'member'} onChange={(e) => changeRole(m.id, e.target.value as 'member' | 'editor' | 'viewer', a?.scope ?? 'full', a?.folderIds ?? [], a?.boardIds ?? [])} style={{ ...select, width: 'auto', padding: '4px 8px' }}>
@@ -138,7 +147,11 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
                         </select>
                       )}
                     </td>
-                    <td style={td}></td>
+                    <td style={{ ...td, textAlign: 'right' }}>
+                      {!isOwner && (
+                        <button onClick={() => setEditAccess(m)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: '#5b50e8', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Gérer le périmètre</button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -174,6 +187,17 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
           currentMemberId={currentMemberId}
           onClose={() => setWizard(false)}
           onDone={() => app.refreshAll()}
+        />
+      )}
+
+      {editAccess && (
+        <AccessEditor
+          workspaceId={workspaceId}
+          member={editAccess}
+          access={access.find((x) => x.member_id === editAccess.id)}
+          folders={folders}
+          onClose={() => setEditAccess(null)}
+          onSaved={() => app.refreshAll()}
         />
       )}
       </div>
