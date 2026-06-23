@@ -83,6 +83,7 @@ interface AppContextValue extends AppState {
   postComment: (taskId: string, memberId: string, content: string) => Promise<void>;
   addChecklistItem: (taskId: string, text: string, position: number) => Promise<void>;
   removeChecklistItem: (itemId: string) => Promise<void>;
+  moveChecklistItem: (items: { id: string; position: number }[], itemId: string, dir: -1 | 1) => Promise<void>;
   addTaskLabel: (taskId: string, labelId: string) => Promise<void>;
   removeTaskLabel: (taskId: string, labelId: string) => Promise<void>;
   addTaskAssignee: (taskId: string, memberId: string) => Promise<void>;
@@ -315,6 +316,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
+  const moveChecklistItem = useCallback(async (items: { id: string; position: number }[], itemId: string, dir: -1 | 1) => {
+    const idx = items.findIndex(i => i.id === itemId);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= items.length) return;
+    const a = items[idx], b = items[swap];
+    await Promise.all([
+      runOrQueue('updateChecklistItem', [a.id, { position: b.position }]),
+      runOrQueue('updateChecklistItem', [b.id, { position: a.position }]),
+    ]);
+    setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
+  }, []);
+
   const addTaskLabel = useCallback(async (taskId: string, labelId: string) => {
     await api.addTaskLabel(taskId, labelId);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
@@ -486,7 +499,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleSettings, toggleSearch, toggleCreateFolder,
       openCreateBoard, closeCreateBoard, setPreferredBoard,
       addTask, clearPendingTasks, patchTask, removeTask, addColumn, postComment,
-      addChecklistItem, removeChecklistItem,
+      addChecklistItem, removeChecklistItem, moveChecklistItem,
       addTaskLabel, removeTaskLabel, addTaskAssignee, removeTaskAssignee,
       addDocument, updateDocument, createBoard, deleteBoard, deleteFolder, deleteColumn, deleteMember,
       updateBoard, updateFolder, updateColumn, createFolder,

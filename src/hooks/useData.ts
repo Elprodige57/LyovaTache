@@ -300,7 +300,7 @@ export async function addChecklistItem(taskId: string, text: string, position: n
   return { data: data as ChecklistItem | null, error };
 }
 
-export async function updateChecklistItem(itemId: string, updates: { is_done?: boolean; text?: string }) {
+export async function updateChecklistItem(itemId: string, updates: { is_done?: boolean; text?: string; position?: number }) {
   const { error } = await supabase.from('checklist_items').update(updates).eq('id', itemId);
   return { error };
 }

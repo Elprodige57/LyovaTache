@@ -401,7 +401,7 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
             )}
 
             {/* Checklist */}
-            {checklist.length > 0 && (
+            {(
               <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)' }}>Sous-tâches</span>
@@ -418,18 +418,19 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {checklist.map(item => {
+                  {checklist.map((item, idx) => {
                     const isDone = app.checklistOverrides[item.id] !== undefined ? app.checklistOverrides[item.id] : item.is_done;
                     return (
                       <div
                         key={item.id}
+                        className="ly-clrow"
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
                           padding: '7px 9px', borderRadius: 8,
                           transition: 'background .1s',
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)'; (e.currentTarget.querySelectorAll('.ly-clact') as NodeListOf<HTMLElement>).forEach(x => x.style.opacity = '1'); }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; (e.currentTarget.querySelectorAll('.ly-clact') as NodeListOf<HTMLElement>).forEach(x => x.style.opacity = '0'); }}
                       >
                         <div
                           onClick={() => app.toggleChecklistItem(item.id, isDone)}
@@ -446,10 +447,26 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
                           {item.text}
                         </span>
                         <div
+                          className="ly-clact"
+                          onClick={() => idx > 0 && app.moveChecklistItem(checklist, item.id, -1)}
+                          title="Monter"
+                          style={{ cursor: idx > 0 ? 'pointer' : 'default', color: idx > 0 ? 'var(--sub2)' : 'var(--line2)', opacity: 0, transition: 'opacity .1s', display: 'flex', padding: '0 2px' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6" /></svg>
+                        </div>
+                        <div
+                          className="ly-clact"
+                          onClick={() => idx < checklist.length - 1 && app.moveChecklistItem(checklist, item.id, 1)}
+                          title="Descendre"
+                          style={{ cursor: idx < checklist.length - 1 ? 'pointer' : 'default', color: idx < checklist.length - 1 ? 'var(--sub2)' : 'var(--line2)', opacity: 0, transition: 'opacity .1s', display: 'flex', padding: '0 2px' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+                        </div>
+                        <div
+                          className="ly-clact"
                           onClick={() => handleDeleteCheck(item.id)}
-                          style={{ cursor: 'pointer', color: 'var(--sub2)', opacity: 0, transition: 'opacity .1s', padding: '0 4px' }}
-                          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                          onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
+                          title="Supprimer"
+                          style={{ cursor: 'pointer', color: 'var(--sub2)', opacity: 0, transition: 'opacity .1s', display: 'flex', padding: '0 4px' }}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
                         </div>
