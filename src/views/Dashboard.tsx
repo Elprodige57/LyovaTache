@@ -1,5 +1,6 @@
 import type { Board, Folder, Member, Task } from '../types';
 import { useApp } from '../context/AppContext';
+import { columnStatus, loadColCats, type Status } from '../lib/status';
 
 interface DashboardProps {
   folders: Folder[];
@@ -10,17 +11,6 @@ interface DashboardProps {
 const PRIO_COLORS = { urgent: '#ef4444', high: '#f97316', medium: '#6366f1', low: '#94a3b8' };
 const WEEKDAYS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-
-type Status = 'done' | 'progress' | 'todo';
-
-// Classe une tâche par son état (drapeau is_done puis nom de colonne).
-function classify(t: Task, colName?: string): Status {
-  if (t.is_done) return 'done';
-  const n = (colName || '').toLowerCase();
-  if (/ferm|termin|done|fini|livr/.test(n)) return 'done';
-  if (/cours|revue|progress|review|doing|test|valid/.test(n)) return 'progress';
-  return 'todo';
-}
 
 function sameMonth(iso: string | null | undefined, ref: Date): boolean {
   if (!iso) return false;
@@ -56,10 +46,14 @@ export function Dashboard({ folders, members, allTasks }: DashboardProps) {
     (f.boards || []).map(b => ({ ...b, folderName: f.name }))
   );
 
-  // Carte column_id -> nom (pour classer chaque tâche).
-  const colName = new Map<string, string>();
-  allBoards.forEach(b => (b.columns || []).forEach(c => colName.set(c.id, c.name)));
-  const statusOf = (t: Task): Status => classify(t, colName.get(t.column_id));
+  // Carte column_id -> colonne (pour classer chaque tâche via sa catégorie de colonne).
+  const cats = loadColCats();
+  const colById = new Map<string, { id: string; name: string }>();
+  allBoards.forEach(b => (b.columns || []).forEach(c => colById.set(c.id, c)));
+  const statusOf = (t: Task): Status => {
+    const c = colById.get(t.column_id);
+    return c ? columnStatus(c, cats) : (t.is_done ? 'done' : 'todo');
+  };
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);

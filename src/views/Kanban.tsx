@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import type { Column, Task, Member } from '../types';
 import { useApp } from '../context/AppContext';
 import { confirmDialog, promptDialog } from '../lib/dialog';
+import { columnStatus, setColCat, loadColCats, STATUS_META, STATUS_ORDER } from '../lib/status';
 
 const PRIO_COLORS: Record<string, string> = {
   urgent: '#ef4444', high: '#f97316', medium: '#6366f1', low: '#94a3b8',
@@ -31,6 +32,16 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
   const [savingCol, setSavingCol] = useState(false);
   const newColInputRef = useRef<HTMLInputElement>(null);
   const newCardInputRef = useRef<HTMLInputElement>(null);
+  const [catVer, setCatVer] = useState(0);
+
+  const colCats = useMemo(() => loadColCats(), [catVer]);
+
+  const cycleCat = (colId: string, name: string) => {
+    const cur = columnStatus({ id: colId, name }, colCats);
+    const next = STATUS_ORDER[(STATUS_ORDER.indexOf(cur) + 1) % STATUS_ORDER.length];
+    setColCat(colId, next);
+    setCatVer(v => v + 1);
+  };
 
   const activeBoardId = app.activeBoardId ?? '00000000-0000-0000-0003-000000000001';
 
