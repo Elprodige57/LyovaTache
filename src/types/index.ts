@@ -138,7 +138,7 @@ export interface Notification {
   created_at: string;
 }
 
-export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives';
+export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives' | 'stats';
 export type BoardView = 'kanban' | 'agenda' | 'automations';
 export type Theme = 'light' | 'dark';
 export type Density = 'comfortable' | 'compact';

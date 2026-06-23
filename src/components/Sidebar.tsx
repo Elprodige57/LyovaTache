@@ -26,6 +26,7 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
     { id: 'dashboard', label: 'Tableau de bord', icon: 'M3 3h7v7H3z|M14 3h7v7h-7z|M14 14h7v7h-7z|M3 14h7v7H3z', screen: 'dashboard' as const },
     { id: 'mytasks', label: 'Mes tâches', icon: 'M9 11l3 3L22 4|M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11', screen: 'mytasks' as const },
     { id: 'notifications', label: 'Notifications', icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9|M13.7 21a2 2 0 0 1-3.4 0', screen: 'notifications' as const, badge: notifUnread || undefined, badgeAccent: true },
+    { id: 'stats', label: 'Statistiques', icon: 'M3 3v18h18|M7 15l3-4 3 3 5-7', screen: 'stats' as const },
     { id: 'documents', label: 'Documents', icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6', screen: 'documents' as const },
     { id: 'archives', label: 'Archives', icon: 'M3 4h18v5H3z|M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9|M10 13h4', screen: 'archives' as const },
   ];

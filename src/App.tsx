@@ -13,6 +13,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { SearchModal } from './components/SearchModal';
 import { CreateFolderModal } from './components/CreateFolderModal';
 import { Dashboard } from './views/Dashboard';
+import { Stats } from './views/Stats';
 import { Kanban } from './views/Kanban';
 import { Agenda } from './views/Agenda';
 import { AutomationsView } from './views/Automations';
@@ -168,6 +169,10 @@ function AppContent({ session }: { session: Session | null }) {
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
           {app.screen === 'dashboard' && (
             <Dashboard folders={folders} members={members} allTasks={effectiveTasks} />
+          )}
+
+          {app.screen === 'stats' && (
+            <Stats folders={folders} members={members} />
           )}
 
           {app.screen === 'mytasks' && (
