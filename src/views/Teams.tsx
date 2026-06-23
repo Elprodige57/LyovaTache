@@ -63,6 +63,12 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
     await setMemberAccess(workspaceId, memberId, { role, scope, folderIds, boardIds });
     app.refreshAll();
   }
+  async function removeFromSpace(m: Member) {
+    if (await confirmDialog('Retirer de l\'espace ?', { message: `${m.name} sera retiré de l'espace : accès, équipes et assignations associés seront supprimés. Action irréversible.`, danger: true, confirmLabel: 'Retirer' })) {
+      await app.deleteMember(m.id);
+      app.refreshAll();
+    }
+  }
 
   const card: React.CSSProperties = { background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 14, padding: 16, boxShadow: 'var(--shadow)' };
   const th: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, color: 'var(--sub2)', textAlign: 'left', padding: '0 10px 8px 0', borderBottom: '1px solid var(--line)' };
@@ -147,9 +153,12 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
                         </select>
                       )}
                     </td>
-                    <td style={{ ...td, textAlign: 'right' }}>
+                    <td style={td}>
                       {!isOwner && (
-                        <button onClick={() => setEditAccess(m)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: '#5b50e8', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Gérer le périmètre</button>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button onClick={() => setEditAccess(m)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: '#5b50e8', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Gérer le périmètre</button>
+                          <button onClick={() => removeFromSpace(m)} title="Retirer de l'espace" style={{ fontSize: 12, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--line)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>Retirer</button>
+                        </div>
                       )}
                     </td>
                   </tr>
