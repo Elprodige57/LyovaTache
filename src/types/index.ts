@@ -138,7 +138,45 @@ export interface Notification {
   created_at: string;
 }
 
-export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives' | 'stats';
+export type AccessScope = 'full' | 'folders' | 'boards';
+export type AccessRole = 'member' | 'editor' | 'viewer';
+
+export interface Team {
+  id: string;
+  workspace_id: string;
+  name: string;
+  service: string | null;
+  color: string;
+  created_at: string;
+  members?: Member[];
+}
+
+export interface MemberAccess {
+  id: string;
+  workspace_id: string;
+  member_id: string;
+  scope: AccessScope;
+  role: AccessRole;
+  created_at: string;
+  folderIds: string[];
+  boardIds: string[];
+}
+
+export interface Invitation {
+  id: string;
+  workspace_id: string;
+  email: string;
+  role: AccessRole;
+  scope: AccessScope;
+  folder_ids: string[];
+  board_ids: string[];
+  message: string | null;
+  status: 'pending' | 'accepted' | 'revoked';
+  invited_by: string | null;
+  created_at: string;
+}
+
+export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives' | 'stats' | 'teams';
 export type BoardView = 'kanban' | 'agenda' | 'automations';
 export type Theme = 'light' | 'dark';
 export type Density = 'comfortable' | 'compact';

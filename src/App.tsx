@@ -14,6 +14,7 @@ import { SearchModal } from './components/SearchModal';
 import { CreateFolderModal } from './components/CreateFolderModal';
 import { Dashboard } from './views/Dashboard';
 import { Stats } from './views/Stats';
+import { Teams } from './views/Teams';
 import { Kanban } from './views/Kanban';
 import { Agenda } from './views/Agenda';
 import { AutomationsView } from './views/Automations';
@@ -173,6 +174,10 @@ function AppContent({ session }: { session: Session | null }) {
 
           {app.screen === 'stats' && (
             <Stats folders={folders} members={members} />
+          )}
+
+          {app.screen === 'teams' && (
+            <Teams workspaceId={WORKSPACE_ID} members={members} folders={folders} currentMemberId={currentMemberId} />
           )}
 
           {app.screen === 'mytasks' && (
