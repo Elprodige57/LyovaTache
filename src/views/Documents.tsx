@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { confirmDialog } from '../lib/dialog';
 import type { Document } from '../types';
 
 interface DocumentsViewProps {
@@ -198,7 +199,7 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
                     {selected.author.initials}
                   </div>
                 )}
-                <button onClick={() => { if (confirm(`Supprimer le document « ${selected.title} » ?`)) app.deleteDocument(selected.id); }} title="Supprimer le document" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                <button onClick={async () => { if (await confirmDialog('Supprimer le document ?', { message: `« ${selected.title} »`, danger: true })) app.deleteDocument(selected.id); }} title="Supprimer le document" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                 </button>
               </div>

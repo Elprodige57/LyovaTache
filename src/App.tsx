@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 import { LoginScreen } from './components/LoginScreen';
+import { DialogHost } from './lib/dialog';
 import { flushQueue } from './lib/syncQueue';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
@@ -222,6 +223,8 @@ function AppContent({ session }: { session: Session | null }) {
 
       {/* Create folder modal */}
       {app.createFolderOpen && <CreateFolderModal workspaceId={WORKSPACE_ID} />}
+
+      <DialogHost />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useApp } from '../context/AppContext';
+import { confirmDialog, promptDialog } from '../lib/dialog';
 import type { Workspace, Folder, Member } from '../types';
 
 interface SidebarProps {
@@ -123,9 +124,9 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
                   )}
                   {workspaces.length > 1 && (
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        if (!confirm(`Supprimer l'espace « ${w.name} » et tout son contenu (Bureaux, tâches, membres…) ? Action irréversible.`)) return;
+                        if (!(await confirmDialog('Supprimer cet espace ?', { message: `« ${w.name} » et tout son contenu (Bureaux, tâches, membres…) seront supprimés. Action irréversible.`, danger: true }))) return;
                         if (w.id === activeWorkspaceId) {
                           const other = workspaces.find(x => x.id !== w.id);
                           if (other) app.setActiveWorkspace(other.id);
@@ -144,7 +145,7 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
               );
             })}
             <div
-              onClick={() => { const n = prompt('Nom du nouvel espace de travail'); if (n && n.trim()) app.createWorkspace(n.trim()); }}
+              onClick={async () => { const n = await promptDialog('Nouvel espace de travail', '', { message: 'Nom de l’espace' }); if (n && n.trim()) app.createWorkspace(n.trim()); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
                 padding: '7px 8px', borderRadius: 8, cursor: 'pointer', color: 'var(--sub)',
@@ -281,7 +282,7 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
               </svg>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{folder.name}</span>
               <button
-                onClick={(e) => { e.stopPropagation(); const n = prompt('Renommer le dossier', folder.name); if (n && n.trim()) app.updateFolder(folder.id, { name: n.trim() }); }}
+                onClick={async (e) => { e.stopPropagation(); const n = await promptDialog('Renommer le dossier', folder.name); if (n && n.trim()) app.updateFolder(folder.id, { name: n.trim() }); }}
                 title="Renommer le dossier"
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 2, borderRadius: 5 }}
                 onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-ink)')}
@@ -290,7 +291,7 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); if (confirm(`Supprimer le dossier « ${folder.name} » et tous ses Bureaux ? Action irréversible.`)) app.deleteFolder(folder.id); }}
+                onClick={async (e) => { e.stopPropagation(); if (await confirmDialog('Supprimer le dossier ?', { message: `« ${folder.name} » et tous ses Bureaux seront supprimés. Action irréversible.`, danger: true })) app.deleteFolder(folder.id); }}
                 title="Supprimer le dossier"
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 2, borderRadius: 5 }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')}

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { Column, Task, Member } from '../types';
 import { useApp } from '../context/AppContext';
+import { confirmDialog, promptDialog } from '../lib/dialog';
 
 const PRIO_COLORS: Record<string, string> = {
   urgent: '#ef4444', high: '#f97316', medium: '#6366f1', low: '#94a3b8',
@@ -200,10 +201,10 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
                     </svg>
                   </div>
                   <div
-                    onClick={() => {
-                      const n = prompt('Nom de la colonne', col.name);
+                    onClick={async () => {
+                      const n = await promptDialog('Nom de la colonne', col.name);
                       if (n === null) return;
-                      const w = prompt('Limite WIP (0 = aucune)', String(col.wip_limit ?? 0));
+                      const w = await promptDialog('Limite WIP (0 = aucune)', String(col.wip_limit ?? 0));
                       const wip = w === null ? (col.wip_limit ?? 0) : (parseInt(w, 10) || 0);
                       app.updateColumn(col.id, { name: n.trim() || col.name, wip_limit: Math.max(0, wip) });
                     }}
@@ -215,7 +216,7 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
                   </div>
                   <div
-                    onClick={() => { if (confirm(`Supprimer la colonne « ${col.name} » et ses ${colTasks.length} tâche(s) ? Action irréversible.`)) app.deleteColumn(col.id); }}
+                    onClick={async () => { if (await confirmDialog('Supprimer la colonne ?', { message: `« ${col.name} » et ses ${colTasks.length} tâche(s) seront supprimées. Action irréversible.`, danger: true })) app.deleteColumn(col.id); }}
                     title="Supprimer la colonne"
                     style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'all .1s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#ef4444'; }}
