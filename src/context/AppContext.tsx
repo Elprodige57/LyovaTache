@@ -120,11 +120,17 @@ interface AppContextValue extends AppState {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+// Restaure l'écran + le Bureau actif après une actualisation (F5) pour ne pas perdre sa place.
+const savedScreen = (typeof localStorage !== 'undefined' ? localStorage.getItem('lyova_screen') : null) as Screen | null;
+const savedBoard = typeof localStorage !== 'undefined' ? localStorage.getItem('lyova_board') : null;
+const initScreen: Screen = savedScreen && (savedScreen !== 'board' || !!savedBoard) ? savedScreen : 'dashboard';
+const initBoard = initScreen === 'board' ? savedBoard : null;
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>({
-    screen: 'dashboard',
+    screen: initScreen,
     boardView: 'kanban',
-    activeBoardId: null,
+    activeBoardId: initBoard,
     activeWorkspaceId: localStorage.getItem('lyova_ws') || '00000000-0000-0000-0000-000000000001',
     selectedTaskId: null,
     aiOpen: false,
@@ -158,6 +164,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute('data-theme', state.theme);
     document.documentElement.setAttribute('data-density', state.density);
   }, [state.theme, state.density]);
+
+  // Mémorise l'écran et le Bureau ouvert pour les restaurer après actualisation.
+  useEffect(() => {
+    try {
+      localStorage.setItem('lyova_screen', state.screen);
+      if (state.activeBoardId) localStorage.setItem('lyova_board', state.activeBoardId);
+      else localStorage.removeItem('lyova_board');
+    } catch { /* ignore */ }
+  }, [state.screen, state.activeBoardId]);
 
   const refreshAll = useCallback(() => {
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1, taskOverrides: {}, automationOverrides: {}, checklistOverrides: {} }));

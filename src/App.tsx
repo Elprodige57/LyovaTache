@@ -102,6 +102,8 @@ function AppContent({ session }: { session: Session | null }) {
   const didAutoOpen = useRef(false);
   useEffect(() => {
     if (didAutoOpen.current) return;
+    // Ne pas écraser un Bureau déjà restauré depuis l'actualisation.
+    if (app.activeBoardId) { didAutoOpen.current = true; return; }
     const pref = currentMember?.preferred_board_id;
     if (pref && allBoardIds.includes(pref)) {
       didAutoOpen.current = true;

@@ -155,7 +155,8 @@ export function Stats({ folders, members }: StatsProps) {
   const empty = gTotal === 0;
 
   return (
-    <div style={{ padding: '22px 26px', maxWidth: 1180, margin: '0 auto' }}>
+    <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '22px 26px 40px' }}>
+      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em' }}>Statistiques</h1>
       </div>
@@ -362,6 +363,7 @@ export function Stats({ folders, members }: StatsProps) {
           </Card>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -60,7 +60,8 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
   const td: React.CSSProperties = { fontSize: 12.5, padding: '9px 10px 9px 0', borderBottom: '1px solid var(--line)', verticalAlign: 'middle' };
 
   return (
-    <div style={{ padding: '22px 26px', maxWidth: 1080, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '22px 26px 40px' }}>
+      <div style={{ maxWidth: 1080, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-0.02em' }}>Équipes & accès</h1>
@@ -175,6 +176,7 @@ export function Teams({ workspaceId, members, folders, currentMemberId }: TeamsP
           onDone={() => app.refreshAll()}
         />
       )}
+      </div>
     </div>
   );
 }
