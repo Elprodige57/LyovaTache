@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { createNotification } from '../hooks/useData';
+import { createNotification, addTaskMention } from '../hooks/useData';
 import { confirmDialog, promptDialog } from '../lib/dialog';
 import { MarkdownText } from '../lib/richtext';
 import type { Task, Column, Member, Label } from '../types';
@@ -176,6 +176,11 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
   const handleAddAssignee = async (m: Member) => {
     if (assignees.some(a => a.id === m.id)) return;
     await app.addTaskAssignee(task.id, m.id);
+    // Tag → mention + notification dans l'espace perso de la personne
+    await addTaskMention(task.id, m.id);
+    if (m.id !== currentMember?.id) {
+      await createNotification('00000000-0000-0000-0000-000000000001', `${currentMember?.name ?? 'Quelqu\'un'} t'a tagué sur « ${task.title} »`, '🏷️', m.id);
+    }
     setShowAssigneePicker(false);
   };
 

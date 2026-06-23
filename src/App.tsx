@@ -23,8 +23,9 @@ import { MyTasks } from './views/MyTasks';
 import { ArchivesView } from './views/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
-  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces
+  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess
 } from './hooks/useData';
+import { accessibleBoardIds, roleOf } from './lib/access';
 import type { Task, Notification } from './types';
 
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
@@ -70,6 +71,21 @@ function AppContent({ session }: { session: Session | null }) {
   const currentMember = session ? authedMember : (members.find(m => m.id === GUEST_MEMBER_ID) ?? members[0] ?? null);
   const currentMemberId = currentMember?.id ?? '';
   const boardMembers = board?.members ?? [];
+
+  // Périmètre d'accès du membre connecté : on masque les dossiers/tableaux hors de son périmètre.
+  // (Aucun member_access ou rôle Propriétaire/Admin → accès total, donc rien n'est masqué par défaut.)
+  const accessRows = useMemberAccess(WORKSPACE_ID, app.refreshCounter);
+  const myAccess = accessRows.find(a => a.member_id === currentMemberId);
+  const myRole = roleOf(myAccess, currentMember?.role);
+  const allowedBoards = myRole === 'owner' ? 'all' : accessibleBoardIds(myAccess, folders);
+  const visibleFolders = allowedBoards === 'all'
+    ? folders
+    : folders
+        .map(f => ({ ...f, boards: (f.boards || []).filter(b => allowedBoards.includes(b.id)) }))
+        .filter(f => (f.boards || []).length > 0);
+
+  // Notifications de l'espace perso : celles ciblant le membre + les diffusions (member_id null)
+  const myNotifications = notifications.filter(n => !n.member_id || n.member_id === currentMemberId);
 
   // Apply task overrides
   const effectiveTasks: Task[] = tasks.map(t => {
@@ -124,7 +140,7 @@ function AppContent({ session }: { session: Session | null }) {
     }}>
       {/* Sidebar */}
       {!app.collapsed && !app.focus && (
-        <Sidebar workspace={workspace} workspaces={workspaces} activeWorkspaceId={app.activeWorkspaceId} folders={folders} currentMember={currentMember} notifUnread={notifications.filter(n => !n.is_read).length} />
+        <Sidebar workspace={workspace} workspaces={workspaces} activeWorkspaceId={app.activeWorkspaceId} folders={visibleFolders} currentMember={currentMember} notifUnread={myNotifications.filter(n => !n.is_read).length} />
       )}
 
       {/* Main */}
@@ -169,11 +185,11 @@ function AppContent({ session }: { session: Session | null }) {
         {/* Body */}
         <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
           {app.screen === 'dashboard' && (
-            <Dashboard folders={folders} members={members} allTasks={effectiveTasks} />
+            <Dashboard folders={visibleFolders} members={members} allTasks={effectiveTasks} />
           )}
 
           {app.screen === 'stats' && (
-            <Stats folders={folders} members={members} />
+            <Stats folders={visibleFolders} members={members} />
           )}
 
           {app.screen === 'teams' && (
@@ -190,7 +206,7 @@ function AppContent({ session }: { session: Session | null }) {
 
           {app.screen === 'notifications' && (
             <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', padding: '24px 28px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
-              <NotificationsView notifications={notifications} workspaceId={WORKSPACE_ID} />
+              <NotificationsView notifications={myNotifications} workspaceId={WORKSPACE_ID} />
             </div>
           )}
 
@@ -229,7 +245,7 @@ function AppContent({ session }: { session: Session | null }) {
       {app.settingsOpen && <SettingsPanel boards={allBoards} members={members} labels={labels} currentMember={currentMember} currentMemberId={currentMemberId} workspace={workspace} isGuest={isGuest} />}
 
       {/* Search modal */}
-      {app.searchOpen && <SearchModal tasks={effectiveTasks} folders={folders} documents={documents} />}
+      {app.searchOpen && <SearchModal tasks={effectiveTasks} folders={visibleFolders} documents={documents} />}
 
       {/* Create folder modal */}
       {app.createFolderOpen && <CreateFolderModal workspaceId={WORKSPACE_ID} />}
