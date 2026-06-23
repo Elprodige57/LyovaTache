@@ -237,6 +237,24 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
                   </div>
                   </>)}
                 </div>
+                {col.kind === 'status' && (() => {
+                  const st = columnStatus({ id: col.id, name: col.name }, colCats);
+                  const meta = STATUS_META[st];
+                  return (
+                    <div
+                      onClick={() => cycleCat(col.id, col.name)}
+                      title="Catégorie de statut — cliquer pour changer (À faire → En cours → Terminé). C'est elle qui pilote les statistiques."
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, cursor: 'pointer',
+                        fontSize: 10.5, fontWeight: 700, color: meta.color, background: meta.color + '1f',
+                        border: `1px solid ${meta.color}55`, borderRadius: 20, padding: '2px 9px', userSelect: 'none',
+                      }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.color }} />
+                      {meta.label}
+                    </div>
+                  );
+                })()}
                 <div style={{ height: 3, background: 'var(--soft2)', borderRadius: 3, marginTop: 9, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', width: `${wipPct}%`,
