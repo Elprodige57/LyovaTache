@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { createNotification } from '../hooks/useData';
 import { confirmDialog, promptDialog } from '../lib/dialog';
+import { MarkdownText } from '../lib/richtext';
 import type { Task, Column, Member, Label } from '../types';
 
 interface TaskDrawerProps {
@@ -37,6 +38,29 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
   const [, setDeletingTask] = useState(false);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+
+  // Insère du Markdown autour de la sélection du textarea de description.
+  const wrapDesc = (before: string, after: string, placeholder: string) => {
+    const ta = descRef.current; if (!ta) return;
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    const val = editingDesc;
+    const sel = val.slice(s, e) || placeholder;
+    const next = val.slice(0, s) + before + sel + after + val.slice(e);
+    setEditingDesc(next);
+    requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(s + before.length, s + before.length + sel.length); });
+  };
+  const listDesc = () => {
+    const ta = descRef.current; if (!ta) return;
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    const val = editingDesc;
+    const lineStart = val.lastIndexOf('\n', s - 1) + 1;
+    const chunk = val.slice(lineStart, e) || '';
+    const lines = (chunk || 'élément').split('\n').map(l => /^\s*[-*]\s+/.test(l) ? l : '- ' + l);
+    const next = val.slice(0, lineStart) + lines.join('\n') + val.slice(e);
+    setEditingDesc(next);
+    requestAnimationFrame(() => ta.focus());
+  };
 
   if (!task) {
     return null;
@@ -379,24 +403,45 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
             {/* Description */}
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Description</div>
             {isEditing ? (
-              <textarea
-                value={editingDesc}
-                onChange={e => setEditingDesc(e.target.value)}
-                rows={5}
-                style={{
-                  width: '100%', fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.6,
-                  border: '1px solid var(--accent)', borderRadius: 10, padding: '10px 12px',
-                  background: 'var(--soft)', outline: 'none', resize: 'vertical',
-                  fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-                  marginBottom: 24,
-                }}
-              />
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                  {[
+                    { t: 'B', title: 'Gras', fw: 800, fs: 'normal', on: () => wrapDesc('**', '**', 'texte') },
+                    { t: 'I', title: 'Italique', fw: 600, fs: 'italic', on: () => wrapDesc('*', '*', 'texte') },
+                    { t: '•', title: 'Liste à puces', fw: 700, fs: 'normal', on: listDesc },
+                    { t: '< >', title: 'Code', fw: 600, fs: 'normal', on: () => wrapDesc('`', '`', 'code') },
+                  ].map(b => (
+                    <button key={b.title} type="button" onClick={b.on} title={b.title}
+                      style={{ minWidth: 30, height: 28, background: 'var(--soft)', border: '1px solid var(--line2)', borderRadius: 7, cursor: 'pointer', color: 'var(--ink2)', fontWeight: b.fw as number, fontStyle: b.fs, fontSize: 13, fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'var(--soft)')}
+                    >{b.t}</button>
+                  ))}
+                </div>
+                <textarea
+                  ref={descRef}
+                  value={editingDesc}
+                  onChange={e => setEditingDesc(e.target.value)}
+                  rows={5}
+                  placeholder="Décrivez la tâche…  **gras**  *italique*  - liste"
+                  style={{
+                    width: '100%', fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.6,
+                    border: '1px solid var(--accent)', borderRadius: 10, padding: '10px 12px',
+                    background: 'var(--soft)', outline: 'none', resize: 'vertical',
+                    fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                  }}
+                />
+              </div>
+            ) : task.description ? (
+              <div onClick={startEditing} style={{ cursor: 'pointer', margin: '0 0 24px' }}>
+                <MarkdownText text={task.description} style={{ fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.6 }} />
+              </div>
             ) : (
               <p
                 onClick={startEditing}
-                style={{ fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.6, margin: '0 0 24px', cursor: 'pointer', minHeight: 24 }}
+                style={{ fontSize: 13.5, color: 'var(--sub2)', lineHeight: 1.6, margin: '0 0 24px', cursor: 'pointer', minHeight: 24 }}
               >
-                {task.description || 'Aucune description. Cliquez pour ajouter.'}
+                Aucune description. Cliquez pour ajouter.
               </p>
             )}
 
