@@ -135,8 +135,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     selectedTaskId: null,
     aiOpen: false,
     aiSummaryForTaskId: null,
-    theme: 'light',
-    density: 'comfortable',
+    theme: ((typeof localStorage !== 'undefined' && localStorage.getItem('lyova_theme')) as Theme) || 'light',
+    density: ((typeof localStorage !== 'undefined' && localStorage.getItem('lyova_density')) as Density) || 'comfortable',
     collapsed: false,
     wsOpen: false,
     filterLabelIds: [],
@@ -163,6 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', state.theme);
     document.documentElement.setAttribute('data-density', state.density);
+    try { localStorage.setItem('lyova_theme', state.theme); localStorage.setItem('lyova_density', state.density); } catch { /* ignore */ }
   }, [state.theme, state.density]);
 
   // Mémorise l'écran et le Bureau ouvert pour les restaurer après actualisation.
