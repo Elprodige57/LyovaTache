@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import type { Column, Task, Member } from '../types';
 import { useApp } from '../context/AppContext';
-import { confirmDialog, promptDialog } from '../lib/dialog';
+import { confirmDialog } from '../lib/dialog';
 import { columnStatus, setColCat, loadColCats, STATUS_META, STATUS_ORDER } from '../lib/status';
 
 const PRIO_COLORS: Record<string, string> = {
@@ -30,6 +30,9 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
   const [newCardTitle, setNewCardTitle] = useState('');
   const [savingCard, setSavingCard] = useState(false);
   const [savingCol, setSavingCol] = useState(false);
+  const [editCol, setEditCol] = useState<Column | null>(null);
+  const [editColName, setEditColName] = useState('');
+  const [editColColor, setEditColColor] = useState('#5b50e8');
   const newColInputRef = useRef<HTMLInputElement>(null);
   const newCardInputRef = useRef<HTMLInputElement>(null);
   const [catVer, setCatVer] = useState(0);
@@ -237,14 +240,8 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
                     </svg>
                   </div>
                   <div
-                    onClick={async () => {
-                      const n = await promptDialog('Nom de la colonne', col.name);
-                      if (n === null) return;
-                      const w = await promptDialog('Limite WIP (0 = aucune)', String(col.wip_limit ?? 0));
-                      const wip = w === null ? (col.wip_limit ?? 0) : (parseInt(w, 10) || 0);
-                      app.updateColumn(col.id, { name: n.trim() || col.name, wip_limit: Math.max(0, wip) });
-                    }}
-                    title="Modifier la colonne (nom, limite WIP)"
+                    onClick={() => { setEditCol(col); setEditColName(col.name); setEditColColor(col.color); }}
+                    title="Modifier la colonne"
                     style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'all .1s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft2)'; e.currentTarget.style.color = 'var(--accent-ink)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sub2)'; }}
@@ -436,6 +433,34 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
           </div>
         ))}
       </div>
+
+      {editCol && (
+        <>
+          <div onClick={() => setEditCol(null)} style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: 60 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 380, maxWidth: '92vw', background: 'var(--panel)', zIndex: 61, borderRadius: 16, boxShadow: 'var(--shadow-md)', border: '1px solid var(--line)', padding: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>Modifier la colonne</h3>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--sub2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Nom</div>
+            <input
+              value={editColName}
+              onChange={e => setEditColName(e.target.value)}
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') { app.updateColumn(editCol.id, { name: editColName.trim() || editCol.name, color: editColColor }); setEditCol(null); } }}
+              style={{ width: '100%', marginBottom: 14, border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 14, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}
+            />
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--sub2)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Couleur</div>
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 14 }}>
+              {COL_COLORS.map(c => <span key={c} onClick={() => setEditColColor(c)} style={{ width: 26, height: 26, borderRadius: 7, background: c, cursor: 'pointer', border: editColColor === c ? '2px solid var(--ink)' : '2px solid transparent' }} />)}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--sub2)', marginBottom: 18 }}>
+              Cette colonne contient <strong style={{ color: 'var(--ink)' }}>{tasks.filter(t => t.column_id === editCol.id).length}</strong> tâche(s).
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setEditCol(null)} style={{ fontSize: 13, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--sub)', cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>Annuler</button>
+              <button onClick={() => { app.updateColumn(editCol.id, { name: editColName.trim() || editCol.name, color: editColColor }); setEditCol(null); }} style={{ fontSize: 13, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>Enregistrer</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
