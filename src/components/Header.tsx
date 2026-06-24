@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { createMember, addBoardMember, createBoard, createFolder } from '../hooks/useData';
+import { createMember, addBoardMember, createBoard, createFolder, useDocumentLinks, linkDocument, unlinkDocument } from '../hooks/useData';
 import { getQueueSize, subscribeQueue } from '../lib/syncQueue';
-import type { Board, Member, Label, Folder } from '../types';
+import type { Board, Member, Label, Folder, Document } from '../types';
 
 interface HeaderProps {
   board?: Board | null;
@@ -12,12 +12,15 @@ interface HeaderProps {
   folders?: Folder[];
   workspaceId?: string;
   currentMemberId?: string;
+  allDocuments?: Document[];
 }
 
 const BOARD_COLORS = ['#5b50e8','#0ea5e9','#10b981','#f59e0b','#f43f5e','#8b5cf6','#14b8a6'];
 
-export function Header({ board, members = [], labels = [], isBoard, folders = [], workspaceId, currentMemberId }: HeaderProps) {
+export function Header({ board, members = [], labels = [], isBoard, folders = [], workspaceId, currentMemberId, allDocuments = [] }: HeaderProps) {
   const app = useApp();
+  const [docPanelOpen, setDocPanelOpen] = useState(false);
+  const boardDocs = useDocumentLinks('board', isBoard ? board?.id : null, app.refreshCounter);
   const [showNewTask, setShowNewTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [savingTask, setSavingTask] = useState(false);
@@ -196,6 +199,47 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
           )}
 
           {/* Edit board */}
+          {/* Documents liés au Bureau */}
+          {isBoard && board && (
+            <div style={{ position: 'relative' }}>
+              <div onClick={() => setDocPanelOpen(o => !o)} title="Documents liés au Bureau" style={{ height: 36, padding: '0 12px', borderRadius: 9, border: '1px solid var(--line2)', background: docPanelOpen ? 'var(--soft)' : 'var(--panel)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--sub)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                <span style={{ fontSize: 12.5, fontWeight: 600 }}>Docs{boardDocs.length ? ` · ${boardDocs.length}` : ''}</span>
+              </div>
+              {docPanelOpen && (
+                <>
+                  <div onClick={() => setDocPanelOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+                  <div style={{ position: 'absolute', top: 42, right: 0, zIndex: 61, width: 280, maxHeight: 340, overflowY: 'auto', background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 12, boxShadow: 'var(--shadow-md)', padding: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Documents liés</div>
+                    {boardDocs.length === 0 ? (
+                      <div style={{ fontSize: 12.5, color: 'var(--sub2)', marginBottom: 10 }}>Aucun document lié à ce Bureau.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
+                        {boardDocs.map(d => (
+                          <div key={d.linkId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                            <span style={{ fontSize: 14 }}>{d.emoji}</span>
+                            <span onClick={() => { app.openDoc(d.id); app.goTo('documents'); setDocPanelOpen(false); }} style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
+                            <span onClick={async () => { await unlinkDocument(d.linkId); app.refreshAll(); }} title="Délier" style={{ cursor: 'pointer', color: 'var(--sub2)', fontSize: 15 }}>×</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', margin: '4px 0 6px' }}>Lier un document</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 150, overflowY: 'auto' }}>
+                      {allDocuments.filter(d => !boardDocs.some(l => l.id === d.id)).map(d => (
+                        <div key={d.id} onClick={async () => { await linkDocument(d.id, 'board', board.id); app.refreshAll(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, cursor: 'pointer', fontSize: 12.5, color: 'var(--ink2)' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                          <span>{d.emoji}</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
+                          <span style={{ fontSize: 14, color: 'var(--accent-ink)' }}>+</span>
+                        </div>
+                      ))}
+                      {allDocuments.filter(d => !boardDocs.some(l => l.id === d.id)).length === 0 && <div style={{ fontSize: 12, color: 'var(--sub2)', padding: '4px 8px' }}>Aucun autre document.</div>}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {isBoard && board && (
             <div onClick={() => setShowEditBoard(true)} title="Modifier le Bureau (nom, couleur)" style={{ width: 36, height: 36, borderRadius: 9, border: '1px solid var(--line2)', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--sub)', transition: 'background .1s' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--soft)')} onMouseLeave={e => (e.currentTarget.style.background = 'var(--panel)')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>

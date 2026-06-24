@@ -1,15 +1,16 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { createNotification, addTaskMention } from '../hooks/useData';
+import { createNotification, addTaskMention, useDocumentLinks, linkDocument, unlinkDocument } from '../hooks/useData';
 import { confirmDialog, promptDialog } from '../lib/dialog';
 import { MarkdownText } from '../lib/richtext';
-import type { Task, Column, Member, Label } from '../types';
+import type { Task, Column, Member, Label, Document } from '../types';
 
 interface TaskDrawerProps {
   task: Task | null;
   columns: Column[];
   currentMember: Member | null;
   allLabels?: Label[];
+  allDocuments?: Document[];
 }
 
 const PRIO_MAP: Record<string, { label: string; color: string }> = {
@@ -21,8 +22,10 @@ const PRIO_MAP: Record<string, { label: string; color: string }> = {
 
 const PRIOS = ['urgent', 'high', 'medium', 'low'] as const;
 
-export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: TaskDrawerProps) {
+export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDocuments = [] }: TaskDrawerProps) {
   const app = useApp();
+  const linkedDocs = useDocumentLinks('task', task?.id, app.refreshCounter);
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingDesc, setEditingDesc] = useState('');
@@ -449,6 +452,44 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [] }: Tas
                 Aucune description. Cliquez pour ajouter.
               </p>
             )}
+
+            {/* Documents liés */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)' }}>Documents liés</span>
+                <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                  <span onClick={() => setDocPickerOpen(o => !o)} style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--accent-ink)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg> Lier
+                  </span>
+                  {docPickerOpen && (
+                    <>
+                      <div onClick={() => setDocPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+                      <div style={{ position: 'absolute', top: 24, right: 0, zIndex: 61, width: 250, maxHeight: 250, overflowY: 'auto', background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 10, boxShadow: 'var(--shadow-md)', padding: '5px 0' }}>
+                        {allDocuments.filter(d => !linkedDocs.some(l => l.id === d.id)).map(d => (
+                          <div key={d.id} onMouseDown={async () => { await linkDocument(d.id, 'task', task.id); setDocPickerOpen(false); app.refreshAll(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', fontSize: 12.5, color: 'var(--ink2)', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                            <span>{d.emoji}</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
+                          </div>
+                        ))}
+                        {allDocuments.filter(d => !linkedDocs.some(l => l.id === d.id)).length === 0 && <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--sub2)' }}>Aucun autre document.</div>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              {linkedDocs.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: 'var(--sub2)' }}>Aucun document lié. Clique « Lier » pour rattacher un CDC, une spec…</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {linkedDocs.map(d => (
+                    <div key={d.linkId} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 9 }}>
+                      <span style={{ fontSize: 15 }}>{d.emoji}</span>
+                      <span onClick={() => { app.openDoc(d.id); app.goTo('documents'); }} style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
+                      <span onClick={async () => { await unlinkDocument(d.linkId); app.refreshAll(); }} title="Délier" style={{ cursor: 'pointer', color: 'var(--sub2)', fontSize: 16 }}>×</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Checklist */}
             {(

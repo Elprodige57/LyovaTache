@@ -826,3 +826,32 @@ export async function addTaskMention(taskId: string, memberId: string) {
   const { error } = await supabase.from('task_mentions').insert({ task_id: taskId, member_id: memberId });
   return { error };
 }
+
+// ── Liens documents ↔ tâches / bureaux ──
+export type LinkTarget = 'task' | 'board';
+
+export function useDocumentLinks(targetType: LinkTarget, targetId: string | null | undefined, refreshKey = 0) {
+  const [docs, setDocs] = useState<Array<Document & { linkId: string }>>([]);
+  useEffect(() => {
+    if (!targetId) { setDocs([]); return; }
+    supabase.from('document_links').select('id, documents(*)').eq('target_type', targetType).eq('target_id', targetId)
+      .then(({ data }) => {
+        if (data) {
+          setDocs((data as Array<{ id: string; documents: Document }>)
+            .filter(r => r.documents)
+            .map(r => ({ ...r.documents, linkId: r.id })));
+        }
+      });
+  }, [targetType, targetId, refreshKey]);
+  return docs;
+}
+
+export async function linkDocument(documentId: string, targetType: LinkTarget, targetId: string) {
+  const { error } = await supabase.from('document_links').insert({ document_id: documentId, target_type: targetType, target_id: targetId });
+  return { error };
+}
+
+export async function unlinkDocument(linkId: string) {
+  const { error } = await supabase.from('document_links').delete().eq('id', linkId);
+  return { error };
+}

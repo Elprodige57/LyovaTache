@@ -182,6 +182,7 @@ function AppContent({ session }: { session: Session | null }) {
             folders={folders}
             workspaceId={WORKSPACE_ID}
             currentMemberId={currentMemberId}
+            allDocuments={documents}
           />
         )}
 
@@ -242,6 +243,7 @@ function AppContent({ session }: { session: Session | null }) {
           columns={columns}
           currentMember={currentMember}
           allLabels={labels}
+          allDocuments={documents}
         />
       )}
 
