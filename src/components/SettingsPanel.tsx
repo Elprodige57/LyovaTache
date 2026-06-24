@@ -6,6 +6,16 @@ import { confirmDialog, promptDialog } from '../lib/dialog';
 import { exportBoard, importBoard, downloadJson } from '../lib/boardIO';
 import type { Board, Member, Workspace, Label } from '../types';
 
+// Avantages indicatifs par plan (affichés sous le plan).
+function planFeatures(plan: string): string {
+  switch (plan) {
+    case 'Gratuit': return 'Tableaux & tâches';
+    case 'Pro': return 'Automations · Documents · Statistiques';
+    case 'Entreprise': return 'Tout · Équipes & accès · Support prioritaire';
+    default: return 'Automations · Documents'; // Plan Équipe
+  }
+}
+
 interface SettingsPanelProps {
   boards?: Board[];
   members?: Member[];
@@ -18,7 +28,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ boards = [], members = [], labels = [], currentMember = null, currentMemberId, workspace = null, isGuest = false }: SettingsPanelProps) {
   const app = useApp();
-  const [tab, setTab] = useState<'general' | 'notifications' | 'account'>('general');
+  const [tab, setTab] = useState<'general' | 'notifications' | 'account' | 'data'>('general');
   const [workspaceName, setWorkspaceName] = useState(workspace?.name ?? 'Lyova Tech');
   const [planValue, setPlanValue] = useState(workspace?.plan ?? 'Plan Équipe');
   const [emailNotif, setEmailNotif] = useState(true);
@@ -85,6 +95,7 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
     { id: 'general' as const, label: 'Général', icon: 'M12 20h9M12 4h9M2 12h9M2 20h9M2 4h9' },
     { id: 'notifications' as const, label: 'Notifications', icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9|M13.7 21a2 2 0 0 1-3.4 0' },
     { id: 'account' as const, label: 'Compte', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+    { id: 'data' as const, label: 'Données', icon: 'M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z|M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7|M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3' },
   ];
 
   return (
@@ -160,22 +171,6 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
                 </select>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Données</div>
-                <div style={{ fontSize: 12, color: 'var(--sub2)', marginBottom: 8 }}>Exporter le Bureau ouvert en JSON, ou importer un Bureau depuis un fichier.</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={handleExport} style={{ flex: 1, background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-                    Exporter
-                  </button>
-                  <button onClick={() => fileRef.current?.click()} style={{ flex: 1, background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 9l5-5 5 5M12 4v12" /></svg>
-                    Importer
-                  </button>
-                  <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{ display: 'none' }} />
-                </div>
-                {ioMsg && <div style={{ fontSize: 12, color: 'var(--accent-ink)', marginTop: 8, fontWeight: 600 }}>{ioMsg}</div>}
-              </div>
-              <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Étiquettes</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
                   {labels.length === 0 && <div style={{ fontSize: 12, color: 'var(--sub2)' }}>Aucune étiquette pour l'instant.</div>}
@@ -233,6 +228,26 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
               <Toggle label="Résumé quotidien" desc="Un email récapitulatif chaque matin à 8h" value={dailyDigest} onChange={setDailyDigest} />
             </div>
           )}
+          {tab === 'data' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Exporter / Importer un Bureau</div>
+                <div style={{ fontSize: 12, color: 'var(--sub2)', marginBottom: 10 }}>Exporter le Bureau ouvert en JSON (sauvegarde), ou importer un Bureau depuis un fichier .json.</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleExport} style={{ flex: 1, background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                    Exporter
+                  </button>
+                  <button onClick={() => fileRef.current?.click()} style={{ flex: 1, background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 9l5-5 5 5M12 4v12" /></svg>
+                    Importer
+                  </button>
+                  <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{ display: 'none' }} />
+                </div>
+                {ioMsg && <div style={{ fontSize: 12, color: 'var(--accent-ink)', marginTop: 8, fontWeight: 600 }}>{ioMsg}</div>}
+              </div>
+            </div>
+          )}
           {tab === 'account' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
@@ -247,9 +262,24 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
               </div>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Plan</div>
-                <div style={{ padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--accent-soft)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-ink)' }}>{workspace?.plan ?? 'Plan Équipe'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 2 }}>5 membres · Automations · Documents</div>
+                <div style={{ padding: '14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--accent-soft)' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-ink)' }}>{workspace?.plan ?? 'Plan Équipe'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--sub2)', marginTop: 2, marginBottom: 12 }}>
+                    {members.length} membre{members.length > 1 ? 's' : ''} · {planFeatures(workspace?.plan ?? 'Plan Équipe')}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select value={planValue} onChange={e => setPlanValue(e.target.value)} style={{ flex: 1, border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 10px', fontSize: 13, fontWeight: 600, color: 'var(--ink)', background: 'var(--panel)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", cursor: 'pointer' }}>
+                      <option value="Gratuit">Gratuit</option>
+                      <option value="Plan Équipe">Équipe</option>
+                      <option value="Pro">Pro</option>
+                      <option value="Entreprise">Entreprise</option>
+                    </select>
+                    <button
+                      onClick={async () => { if (workspace?.id) { await updateWorkspace(workspace.id, { name: workspaceName.trim() || workspace.name, plan: planValue }); app.refreshAll(); } }}
+                      disabled={planValue === (workspace?.plan ?? 'Plan Équipe')}
+                      style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: planValue === (workspace?.plan ?? 'Plan Équipe') ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                    >Changer de plan</button>
+                  </div>
                 </div>
               </div>
               <div>
