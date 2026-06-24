@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { confirmDialog } from '../lib/dialog';
 import type { Document } from '../types';
@@ -16,6 +16,8 @@ const BLOCK_LABELS: Record<string, string> = {
   check: 'Checklist',
   list: 'Liste',
   quote: 'Citation',
+  image: 'Image',
+  divider: 'Séparateur',
 };
 
 const DEFAULT_CONTENT: Record<string, unknown>[] = [
@@ -73,13 +75,36 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
     setEditedContent(prev => [...prev, { type, content: '' }]);
   };
 
+  // Insère un nouveau bloc juste après l'index donné (choisir où on met les choses).
+  const insertBlockAfter = (idx: number, type: string) => {
+    setEditedContent(prev => { const c = [...prev]; c.splice(idx + 1, 0, { type, content: '' }); return c; });
+  };
+
+  // Réordonne un bloc (↑/↑).
+  const moveBlock = (idx: number, dir: 'up' | 'down') => {
+    setEditedContent(prev => {
+      const j = idx + (dir === 'up' ? -1 : 1);
+      if (j < 0 || j >= prev.length) return prev;
+      const c = [...prev];
+      [c[idx], c[j]] = [c[j], c[idx]];
+      return c;
+    });
+  };
+
   const updateBlock = (idx: number, content: string) => {
     setEditedContent(prev => prev.map((b, i) => i === idx ? { ...b, content } : b));
+  };
+
+  const updateBlockField = (idx: number, field: string, value: unknown) => {
+    setEditedContent(prev => prev.map((b, i) => i === idx ? { ...b, [field]: value } : b));
   };
 
   const removeBlock = (idx: number) => {
     setEditedContent(prev => prev.filter((_, i) => i !== idx));
   };
+
+  // Mise en forme du texte sélectionné dans le bloc actif (type Word).
+  const exec = (cmd: string, value?: string) => document.execCommand(cmd, false, value);
 
   const handleCreateDoc = async () => {
     const t = newDocTitle.trim();
@@ -225,17 +250,34 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
             {/* Editor */}
             {isEditing ? (
               <div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                <style>{`[contenteditable][data-ph]:empty:before{content:attr(data-ph);color:var(--sub2);pointer-events:none}`}</style>
+                {/* Barre de mise en forme (s'applique au bloc en cours d'édition) */}
+                <div style={{ position: 'sticky', top: 0, zIndex: 5, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 10, padding: 6, marginBottom: 14 }}>
+                  <FmtBtn onClick={() => exec('bold')} title="Gras (Ctrl+B)"><b>G</b></FmtBtn>
+                  <FmtBtn onClick={() => exec('italic')} title="Italique (Ctrl+I)"><i>I</i></FmtBtn>
+                  <FmtBtn onClick={() => exec('underline')} title="Souligné (Ctrl+U)"><u>S</u></FmtBtn>
+                  <span style={{ width: 1, height: 18, background: 'var(--line2)', margin: '0 4px' }} />
+                  <FmtBtn onClick={() => exec('insertUnorderedList')} title="Liste à puces">• —</FmtBtn>
+                  <FmtBtn onClick={() => exec('insertOrderedList')} title="Liste numérotée">1.</FmtBtn>
+                  <FmtBtn onClick={() => exec('removeFormat')} title="Effacer la mise en forme">✕ format</FmtBtn>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                   {editedContent.map((block, idx) => (
                     <DocBlockEditor
                       key={idx}
                       block={block}
                       onChange={c => updateBlock(idx, c)}
+                      onToggleDone={() => updateBlockField(idx, 'done', !(block.done === true))}
                       onRemove={() => removeBlock(idx)}
+                      onMoveUp={() => moveBlock(idx, 'up')}
+                      onMoveDown={() => moveBlock(idx, 'down')}
+                      onInsertAfter={(type) => insertBlockAfter(idx, type)}
+                      isFirst={idx === 0}
+                      isLast={idx === editedContent.length - 1}
                     />
                   ))}
                 </div>
-                {/* Add block toolbar */}
+                {/* Ajouter un bloc (à la fin) */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
                   {Object.entries(BLOCK_LABELS).map(([type, label]) => (
                     <div
@@ -371,12 +413,19 @@ function DocBlockRenderer({ block }: { block: Record<string, unknown> }) {
   const type = String(block.type || 'p');
   const content = String(block.content || '');
   const done = block.done === true;
+  const html = { __html: content };
 
+  if (type === 'divider') {
+    return <hr style={{ border: 'none', borderTop: '1px solid var(--line2)', margin: '10px 0' }} />;
+  }
+  if (type === 'image') {
+    return content ? <img src={content} alt="" style={{ maxWidth: '100%', borderRadius: 10, border: '1px solid var(--line)' }} /> : null;
+  }
   if (type === 'h') {
-    return <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--ink)', margin: '12px 0 6px' }}>{content}</div>;
+    return <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--ink)', margin: '12px 0 6px' }} dangerouslySetInnerHTML={html} />;
   }
   if (type === 'h2') {
-    return <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink2)', margin: '10px 0 4px' }}>{content}</div>;
+    return <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink2)', margin: '10px 0 4px' }} dangerouslySetInnerHTML={html} />;
   }
   if (type === 'code') {
     return (
@@ -385,7 +434,7 @@ function DocBlockRenderer({ block }: { block: Record<string, unknown> }) {
         fontSize: 12.5, background: 'var(--soft)',
         border: '1px solid var(--line)', borderRadius: 10,
         padding: '14px 16px', color: 'var(--ink2)',
-        overflowX: 'auto', margin: 0, lineHeight: 1.6,
+        overflowX: 'auto', margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap',
       }}>{content}</pre>
     );
   }
@@ -398,7 +447,7 @@ function DocBlockRenderer({ block }: { block: Record<string, unknown> }) {
         borderRadius: 10, padding: '13px 15px',
       }}>
         <span style={{ fontSize: 17 }}>💡</span>
-        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--ink2)' }}>{content}</div>
+        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--ink2)' }} dangerouslySetInnerHTML={html} />
       </div>
     );
   }
@@ -414,9 +463,7 @@ function DocBlockRenderer({ block }: { block: Record<string, unknown> }) {
         }}>
           {done && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 12l4 4L19 6" /></svg>}
         </div>
-        <span style={{ fontSize: 15, color: done ? 'var(--sub2)' : 'var(--ink2)', textDecoration: done ? 'line-through' : 'none' }}>
-          {content}
-        </span>
+        <span style={{ fontSize: 15, color: done ? 'var(--sub2)' : 'var(--ink2)', textDecoration: done ? 'line-through' : 'none' }} dangerouslySetInnerHTML={html} />
       </div>
     );
   }
@@ -424,7 +471,7 @@ function DocBlockRenderer({ block }: { block: Record<string, unknown> }) {
     return (
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, margin: '2px 0' }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', marginTop: 8, flexShrink: 0 }} />
-        <span style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--ink2)' }}>{content}</span>
+        <span style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--ink2)' }} dangerouslySetInnerHTML={html} />
       </div>
     );
   }
@@ -434,180 +481,115 @@ function DocBlockRenderer({ block }: { block: Record<string, unknown> }) {
         borderLeft: '3px solid var(--accent)',
         padding: '4px 0 4px 14px',
         fontSize: 15, color: 'var(--ink2)', lineHeight: 1.7, fontStyle: 'italic',
-      }}>
-        {content}
-      </div>
+      }} dangerouslySetInnerHTML={html} />
     );
   }
-  return <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--ink2)' }}>{content}</div>;
+  return <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--ink2)' }} dangerouslySetInnerHTML={html} />;
 }
 
-function DocBlockEditor({ block, onChange, onRemove }: {
+// Bouton de la barre de mise en forme (onMouseDown pour ne pas perdre la sélection).
+function FmtBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      onMouseDown={e => { e.preventDefault(); onClick(); }}
+      title={title}
+      style={{ minWidth: 28, height: 26, padding: '0 8px', fontSize: 12.5, borderRadius: 6, border: '1px solid var(--line2)', background: 'var(--panel)', color: 'var(--ink2)', cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}
+    >{children}</button>
+  );
+}
+
+// Zone éditable riche (contentEditable) : on fige le HTML initial pour ne pas casser le curseur.
+function RichEditable({ html, onChange, placeholder, style }: { html: string; onChange: (h: string) => void; placeholder: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const initial = useRef(html ?? '');
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      data-ph={placeholder}
+      onInput={() => onChange(ref.current?.innerHTML ?? '')}
+      dangerouslySetInnerHTML={{ __html: initial.current }}
+      style={{ outline: 'none', minHeight: 22, fontFamily: "'Hanken Grotesk', system-ui, sans-serif", ...style }}
+    />
+  );
+}
+
+function DocBlockEditor({ block, onChange, onToggleDone, onRemove, onMoveUp, onMoveDown, onInsertAfter, isFirst, isLast }: {
   block: Record<string, unknown>;
   onChange: (c: string) => void;
+  onToggleDone: () => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onInsertAfter: (type: string) => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const type = String(block.type || 'p');
   const content = String(block.content || '');
-  const isDone = block.done === true;
-  const [check, setCheck] = useState(isDone);
+  const done = block.done === true;
+  const [openInsert, setOpenInsert] = useState(false);
 
-  if (type === 'h') {
-    return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Titre"
-          style={{
-            flex: 1, fontSize: 20, fontWeight: 800, letterSpacing: '-0.01em',
-            color: 'var(--ink)', border: '1px solid var(--line2)', borderRadius: 8,
-            padding: '8px 10px', background: 'var(--soft)', outline: 'none',
-            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-          }}
-        />
-        <button onClick={onRemove} style={{ background: 'transparent', color: '#ef4444', border: 'none', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>×</button>
-      </div>
-    );
-  }
-  if (type === 'h2') {
-    return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Sous-titre"
-          style={{
-            flex: 1, fontSize: 16, fontWeight: 700,
-            color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 8,
-            padding: '8px 10px', background: 'var(--soft)', outline: 'none',
-            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-          }}
-        />
-        <button onClick={onRemove} style={{ background: 'transparent', color: '#ef4444', border: 'none', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>×</button>
-      </div>
-    );
-  }
-  if (type === 'code') {
-    return (
-      <div style={{ position: 'relative' }}>
-        <textarea
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Code"
-          rows={4}
-          style={{
-            width: '100%', fontFamily: "'JetBrains Mono', monospace",
-            fontSize: 12.5, background: 'var(--soft)',
-            border: '1px solid var(--line2)', borderRadius: 10,
-            padding: '14px 16px', color: 'var(--ink2)',
-            outline: 'none', resize: 'vertical',
-          }}
-        />
-        <button onClick={onRemove} style={{ position: 'absolute', top: 6, right: 6, background: 'var(--panel)', color: '#ef4444', border: '1px solid var(--line2)', borderRadius: 5, fontSize: 12, cursor: 'pointer', padding: '2px 6px' }}>×</button>
-      </div>
-    );
-  }
-  if (type === 'callout') {
-    return (
-      <div style={{ position: 'relative', display: 'flex', gap: 11, background: 'var(--accent-soft)', border: '1px solid var(--accent)44', borderRadius: 10, padding: '13px 15px' }}>
-        <span style={{ fontSize: 17, flexShrink: 0 }}>💡</span>
-        <textarea
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Callout"
-          rows={2}
-          style={{
-            flex: 1, fontSize: 14, lineHeight: 1.6, color: 'var(--ink2)',
-            border: 'none', outline: 'none', resize: 'vertical', background: 'transparent',
-            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-          }}
-        />
-        <button onClick={onRemove} style={{ position: 'absolute', top: 6, right: 6, background: 'var(--panel)', color: '#ef4444', border: '1px solid var(--line2)', borderRadius: 5, fontSize: 12, cursor: 'pointer', padding: '2px 6px' }}>×</button>
-      </div>
-    );
-  }
-  if (type === 'check') {
-    return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div
-          onClick={() => { setCheck(!check); }}
-          style={{
-            width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
-            border: `2px solid ${check ? '#10b981' : 'var(--line2)'}`,
-            background: check ? '#10b981' : 'transparent',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
-        >
-          {check && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 12l4 4L19 6" /></svg>}
+  const ctrl = (disabled: boolean, color?: string): React.CSSProperties => ({
+    width: 24, height: 24, padding: 0, fontSize: 13, lineHeight: 1, borderRadius: 6,
+    border: '1px solid var(--line2)', background: 'var(--panel)', color: color || 'var(--sub2)',
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.35 : 1, flexShrink: 0,
+    fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+  });
+
+  // Corps de l'éditeur selon le type
+  let body: React.ReactNode;
+  if (type === 'divider') {
+    body = <hr style={{ flex: 1, border: 'none', borderTop: '2px dashed var(--line2)', margin: '6px 0' }} />;
+  } else if (type === 'image') {
+    body = <input value={content} onChange={e => onChange(e.target.value)} placeholder="URL de l'image (https://…)" style={{ flex: 1, fontSize: 13, color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 6, padding: '7px 9px', background: 'var(--panel)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />;
+  } else if (type === 'code') {
+    body = <textarea value={content} onChange={e => onChange(e.target.value)} placeholder="Code" rows={4} style={{ flex: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 12.5, background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 8, padding: '10px 12px', color: 'var(--ink2)', outline: 'none', resize: 'vertical' }} />;
+  } else {
+    const richStyle: React.CSSProperties =
+      type === 'h' ? { fontSize: 20, fontWeight: 800, color: 'var(--ink)', flex: 1 }
+      : type === 'h2' ? { fontSize: 16, fontWeight: 700, color: 'var(--ink2)', flex: 1 }
+      : { fontSize: 15, lineHeight: 1.7, color: 'var(--ink2)', flex: 1, fontStyle: type === 'quote' ? 'italic' : 'normal' };
+    const rich = <RichEditable html={content} onChange={onChange} placeholder={BLOCK_LABELS[type] || 'Texte'} style={richStyle} />;
+    if (type === 'check') {
+      body = (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flex: 1 }}>
+          <div onClick={onToggleDone} style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer', marginTop: 2, border: `2px solid ${done ? '#10b981' : 'var(--line2)'}`, background: done ? '#10b981' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {done && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><path d="M5 12l4 4L19 6" /></svg>}
+          </div>
+          {rich}
         </div>
-        <input
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Checklist item"
-          style={{
-            flex: 1, fontSize: 14, color: 'var(--ink2)',
-            border: '1px solid var(--line2)', borderRadius: 6,
-            padding: '6px 8px', background: 'var(--soft)', outline: 'none',
-            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-          }}
-        />
-        <button onClick={onRemove} style={{ background: 'transparent', color: '#ef4444', border: 'none', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>×</button>
-      </div>
-    );
+      );
+    } else if (type === 'callout') {
+      body = <div style={{ display: 'flex', gap: 10, flex: 1, background: 'var(--accent-soft)', borderRadius: 8, padding: '8px 10px' }}><span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>{rich}</div>;
+    } else if (type === 'quote') {
+      body = <div style={{ flex: 1, borderLeft: '3px solid var(--accent)', paddingLeft: 12 }}>{rich}</div>;
+    } else if (type === 'list') {
+      body = <div style={{ display: 'flex', gap: 8, flex: 1, alignItems: 'flex-start' }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', marginTop: 9, flexShrink: 0 }} />{rich}</div>;
+    } else {
+      body = rich;
+    }
   }
-  if (type === 'list') {
-    return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', marginTop: 8, flexShrink: 0 }} />
-        <input
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Item de liste"
-          style={{
-            flex: 1, fontSize: 14, color: 'var(--ink2)',
-            border: '1px solid var(--line2)', borderRadius: 6,
-            padding: '6px 8px', background: 'var(--soft)', outline: 'none',
-            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-          }}
-        />
-        <button onClick={onRemove} style={{ background: 'transparent', color: '#ef4444', border: 'none', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>×</button>
-      </div>
-    );
-  }
-  if (type === 'quote') {
-    return (
-      <div style={{ position: 'relative', display: 'flex', gap: 8, borderLeft: '3px solid var(--accent)', padding: '4px 0 4px 14px' }}>
-        <textarea
-          value={content}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Citation"
-          rows={2}
-          style={{
-            flex: 1, fontSize: 14, color: 'var(--ink2)', lineHeight: 1.7, fontStyle: 'italic',
-            border: 'none', outline: 'none', resize: 'vertical', background: 'transparent',
-            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-          }}
-        />
-        <button onClick={onRemove} style={{ position: 'absolute', top: -2, right: 0, background: 'var(--panel)', color: '#ef4444', border: '1px solid var(--line2)', borderRadius: 5, fontSize: 12, cursor: 'pointer', padding: '2px 6px' }}>×</button>
-      </div>
-    );
-  }
+
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-      <textarea
-        value={content}
-        onChange={e => onChange(e.target.value)}
-        placeholder="Paragraphe"
-        rows={2}
-        style={{
-          flex: 1, fontSize: 15, color: 'var(--ink2)', lineHeight: 1.7,
-          border: '1px solid var(--line2)', borderRadius: 8,
-          padding: '8px 10px', background: 'var(--soft)', outline: 'none',
-          resize: 'vertical', fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-        }}
-      />
-      <button onClick={onRemove} style={{ background: 'transparent', color: '#ef4444', border: 'none', fontSize: 12, cursor: 'pointer', padding: '4px 6px' }}>×</button>
+    <div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'var(--soft)', border: '1px solid var(--line2)', borderRadius: 8, padding: '7px 9px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{body}</div>
+        <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexShrink: 0 }}>
+          <button onClick={onMoveUp} disabled={isFirst} title="Monter" style={ctrl(isFirst)}>↑</button>
+          <button onClick={onMoveDown} disabled={isLast} title="Descendre" style={ctrl(isLast)}>↓</button>
+          <button onClick={() => setOpenInsert(o => !o)} title="Insérer un bloc en dessous" style={ctrl(false, 'var(--accent-ink)')}>+</button>
+          <button onClick={onRemove} title="Supprimer le bloc" style={ctrl(false, '#ef4444')}>×</button>
+        </div>
+      </div>
+      {openInsert && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', margin: '4px 0 0 6px' }}>
+          {Object.entries(BLOCK_LABELS).map(([t, l]) => (
+            <span key={t} onClick={() => { onInsertAfter(t); setOpenInsert(false); }} style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--accent-ink)', background: 'var(--accent-soft)', borderRadius: 12, padding: '3px 8px', cursor: 'pointer' }}>+ {l}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
