@@ -33,6 +33,7 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
   const newColInputRef = useRef<HTMLInputElement>(null);
   const newCardInputRef = useRef<HTMLInputElement>(null);
   const [catVer, setCatVer] = useState(0);
+  const [dragColId, setDragColId] = useState<string | null>(null);
 
   const colCats = useMemo(() => loadColCats(), [catVer]);
 
@@ -126,6 +127,19 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
     await app.updateColumn(b.id, { position: a.position });
   };
 
+  // Réordonne par glisser-déposer : insère la colonne source à l'emplacement de la cible, puis réindexe.
+  const reorderColumns = async (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const sorted = [...columns].sort((a, b) => a.position - b.position);
+    const from = sorted.findIndex(c => c.id === sourceId);
+    const to = sorted.findIndex(c => c.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = sorted.splice(from, 1);
+    sorted.splice(to, 0, moved);
+    await Promise.all(sorted.map((c, i) => (c.position === i ? null : app.updateColumn(c.id, { position: i }))));
+    setDragColId(null);
+  };
+
   const openAddCard = (colId: string) => {
     setAddingCardColId(colId);
     setNewCardTitle('');
@@ -169,7 +183,7 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
             <div
               key={col.id}
               onDragOver={e => { e.preventDefault(); if (dragOverColId !== col.id) setDragOverColId(col.id); }}
-              onDrop={handleDrop(col)}
+              onDrop={e => { if (dragColId) { e.preventDefault(); reorderColumns(dragColId, col.id); setDragOverColId(null); } else { handleDrop(col)(e); } }}
               style={{
                 width: 'var(--col-w)', flexShrink: 0,
                 background: 'var(--panel2)', border: '1px solid var(--line)',
@@ -182,6 +196,17 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
               {/* Column header */}
               <div style={{ padding: 'var(--col-head-pad)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  {col.kind === 'status' && (
+                    <span
+                      draggable
+                      onDragStart={e => { setDragColId(col.id); e.dataTransfer.effectAllowed = 'move'; }}
+                      onDragEnd={() => setDragColId(null)}
+                      title="Glisser pour déplacer la colonne"
+                      style={{ cursor: 'grab', color: 'var(--sub2)', display: 'flex', alignItems: 'center' }}
+                    >
+                      <svg width="12" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.7" /><circle cx="15" cy="5" r="1.7" /><circle cx="9" cy="12" r="1.7" /><circle cx="15" cy="12" r="1.7" /><circle cx="9" cy="19" r="1.7" /><circle cx="15" cy="19" r="1.7" /></svg>
+                    </span>
+                  )}
                   <span style={{ width: 9, height: 9, borderRadius: 3, background: col.color }} />
                   <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--ink)' }}>{col.name}</span>
                   <span style={{

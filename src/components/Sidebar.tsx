@@ -30,6 +30,7 @@ export function Sidebar({ workspace, workspaces = [], activeWorkspaceId, folders
     { id: 'documents', label: 'Documents', icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6', screen: 'documents' as const },
     { id: 'archives', label: 'Archives', icon: 'M3 4h18v5H3z|M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9|M10 13h4', screen: 'archives' as const },
     { id: 'teams', label: 'Équipes & accès', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2|M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8z|M23 21v-2a4 4 0 0 0-3-3.87|M16 3.13a4 4 0 0 1 0 7.75', screen: 'teams' as const },
+    { id: 'trash', label: 'Corbeille', icon: 'M3 6h18|M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6|M10 11v6M14 11v6|M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', screen: 'trash' as const },
   ];
 
   const allBoards = folders.flatMap(f => (f.boards || []).map(b => ({ ...b, folderName: f.name })));

@@ -67,7 +67,14 @@ export function useFolders(workspaceId: string | undefined, refreshKey = 0) {
     if (!workspaceId) return;
     setFolders(loadCache<Folder[]>('folders_' + workspaceId, []));
     supabase.from('folders').select('*, boards(*)').eq('workspace_id', workspaceId).order('position')
-      .then(({ data }) => { if (data) { setFolders(data); saveCache('folders_' + workspaceId, data); } });
+      .then(({ data }) => {
+        if (data) {
+          // Masque les Bureaux en corbeille (deleted_at non nul).
+          const clean = (data as Folder[]).map((f) => ({ ...f, boards: (f.boards || []).filter((b) => !b.deleted_at) }));
+          setFolders(clean);
+          saveCache('folders_' + workspaceId, clean);
+        }
+      });
   }, [workspaceId]);
 
   useEffect(() => { reload(); }, [reload, refreshKey]);
@@ -370,9 +377,48 @@ export async function createBoard(folderId: string, name: string, color: string,
 }
 
 export async function deleteBoard(boardId: string) {
-  // Cascade : colonnes, tâches, étiquettes/assignés/sous-tâches/commentaires liés
+  // Suppression douce : le Bureau part à la corbeille (récupérable 30 jours), toutes ses infos restent.
+  const { error } = await supabase.from('boards').update({ deleted_at: new Date().toISOString() }).eq('id', boardId);
+  return { error };
+}
+
+// Bureaux dans la corbeille (deleted_at non nul) du workspace, avec le nom du dossier.
+export function useTrashedBoards(workspaceId: string | undefined, refreshKey = 0) {
+  const [boards, setBoards] = useState<Board[]>([]);
+  useEffect(() => {
+    if (!workspaceId) return;
+    supabase.from('boards')
+      .select('*, folder:folders!inner(id, name, workspace_id)')
+      .eq('folder.workspace_id', workspaceId)
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false })
+      .then(({ data }) => { if (data) setBoards(data as Board[]); });
+  }, [workspaceId, refreshKey]);
+  return boards;
+}
+
+export async function restoreBoard(boardId: string) {
+  const { error } = await supabase.from('boards').update({ deleted_at: null }).eq('id', boardId);
+  return { error };
+}
+
+export async function purgeBoard(boardId: string) {
+  // Suppression définitive (cascade colonnes/tâches…)
   const { error } = await supabase.from('boards').delete().eq('id', boardId);
   return { error };
+}
+
+// Purge automatique des Bureaux en corbeille depuis plus de 30 jours.
+export async function purgeExpiredBoards(workspaceId: string) {
+  const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const { data } = await supabase.from('boards')
+    .select('id, folder:folders!inner(workspace_id)')
+    .eq('folder.workspace_id', workspaceId)
+    .not('deleted_at', 'is', null)
+    .lt('deleted_at', cutoff);
+  const ids = (data || []).map((b) => (b as { id: string }).id);
+  if (ids.length) await supabase.from('boards').delete().in('id', ids);
+  return ids.length;
 }
 
 export async function updateBoard(boardId: string, updates: { name?: string; color?: string; description?: string }) {

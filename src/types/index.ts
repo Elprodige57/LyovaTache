@@ -35,6 +35,7 @@ export interface Board {
   color: string;
   position: number;
   created_at: string;
+  deleted_at?: string | null;
   folder?: Folder;
   members?: Member[];
   columns?: Column[];
@@ -176,7 +177,7 @@ export interface Invitation {
   created_at: string;
 }
 
-export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives' | 'stats' | 'teams';
+export type Screen = 'dashboard' | 'board' | 'mytasks' | 'documents' | 'automations' | 'notifications' | 'archives' | 'stats' | 'teams' | 'trash';
 export type BoardView = 'kanban' | 'agenda' | 'automations';
 export type Theme = 'light' | 'dark';
 export type Density = 'comfortable' | 'compact';

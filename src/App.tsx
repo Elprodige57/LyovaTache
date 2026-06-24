@@ -15,6 +15,7 @@ import { CreateFolderModal } from './components/CreateFolderModal';
 import { Dashboard } from './views/Dashboard';
 import { Stats } from './views/Stats';
 import { Teams } from './views/Teams';
+import { Trash } from './views/Trash';
 import { Kanban } from './views/Kanban';
 import { Agenda } from './views/Agenda';
 import { AutomationsView } from './views/Automations';
@@ -196,6 +197,10 @@ function AppContent({ session }: { session: Session | null }) {
 
           {app.screen === 'teams' && (
             <Teams workspaceId={WORKSPACE_ID} members={members} folders={folders} currentMemberId={currentMemberId} />
+          )}
+
+          {app.screen === 'trash' && (
+            <Trash workspaceId={WORKSPACE_ID} />
           )}
 
           {app.screen === 'mytasks' && (

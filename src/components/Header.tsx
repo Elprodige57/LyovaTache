@@ -355,11 +355,11 @@ export function Header({ board, members = [], labels = [], isBoard, folders = []
               <div style={{ fontSize: 16.5, fontWeight: 800, color: 'var(--ink)' }}>Supprimer ce Bureau ?</div>
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--ink2)', lineHeight: 1.5, marginBottom: 18 }}>
-              Tu vas supprimer <b>« {board.name} »</b> et <b>toutes ses colonnes et tâches</b>. Cette action est <b>définitive</b> et irréversible.
+              <b>« {board.name} »</b> part à la <b>corbeille</b> avec toutes ses colonnes et tâches. Tu peux le <b>restaurer pendant 30 jours</b> ; après quoi il est supprimé définitivement.
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowDeleteBoard(false)} style={{ background: 'var(--panel)', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 8, padding: '9px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Annuler</button>
-              <button onClick={handleDeleteBoard} disabled={deletingBoard} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deletingBoard ? 0.6 : 1 }}>{deletingBoard ? '…' : 'Supprimer définitivement'}</button>
+              <button onClick={handleDeleteBoard} disabled={deletingBoard} style={{ background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 16px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: deletingBoard ? 0.6 : 1 }}>{deletingBoard ? '…' : 'Mettre à la corbeille'}</button>
             </div>
           </div>
         </>
