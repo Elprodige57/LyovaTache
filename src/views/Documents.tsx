@@ -126,6 +126,7 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
             doc={selected}
             onSave={(title, html) => app.updateDocument(selected.id, { title: title.trim() || selected.title, content: [{ type: 'doc', html }], emoji: selected.emoji })}
             onDelete={async () => { if (await confirmDialog('Supprimer le document ?', { message: `« ${selected.title} »`, danger: true })) app.deleteDocument(selected.id); }}
+            onNew={() => app.addDocument('00000000-0000-0000-0000-000000000001', 'Nouveau document', '📝', null)}
           />
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--sub2)' }}>
@@ -141,7 +142,7 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
 // ────────────────────────────────────────────────────────────
 //  Traitement de texte (style Word / LibreOffice)
 // ────────────────────────────────────────────────────────────
-function WordProcessor({ doc, onSave, onDelete }: { doc: Document; onSave: (title: string, html: string) => void | Promise<void>; onDelete: () => void }) {
+function WordProcessor({ doc, onSave, onDelete, onNew }: { doc: Document; onSave: (title: string, html: string) => void | Promise<void>; onDelete: () => void; onNew: () => void }) {
   const initialHtml = useMemo(() => blocksToHtml(doc.content), [doc.content]);
   const pageRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(doc.title);
@@ -149,6 +150,7 @@ function WordProcessor({ doc, onSave, onDelete }: { doc: Document; onSave: (titl
   const [words, setWords] = useState(0);
   const [zoom, setZoom] = useState(100);
   const [ribbonTab, setRibbonTab] = useState('Accueil');
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   const dirty = useRef(false);
   const latest = useRef({ title: doc.title, html: initialHtml });
@@ -191,6 +193,49 @@ function WordProcessor({ doc, onSave, onDelete }: { doc: Document; onSave: (titl
     markDirty();
   };
   const block = (tag: string) => exec('formatBlock', tag);
+  const insertImage = () => { const u = prompt("URL de l'image"); if (u) exec('insertImage', u); };
+  const insertLink = () => { const u = prompt('URL du lien'); if (u) exec('createLink', u); };
+
+  // Menus déroulants de la barre de titre (actions réelles).
+  type MItem = { label: string; shortcut?: string; action: () => void; sep?: boolean };
+  const menus: Record<string, MItem[]> = {
+    Fichier: [
+      { label: 'Nouvelle page', shortcut: '⌘N', action: onNew },
+      { label: 'Enregistrer', shortcut: '⌘S', action: doSave },
+      { label: 'Imprimer', shortcut: '⌘P', action: () => window.print() },
+      { label: 'Supprimer le document', sep: true, action: onDelete },
+    ],
+    Édition: [
+      { label: 'Annuler', shortcut: '⌘Z', action: () => exec('undo') },
+      { label: 'Rétablir', shortcut: '⌘Y', action: () => exec('redo') },
+      { label: 'Couper', shortcut: '⌘X', sep: true, action: () => exec('cut') },
+      { label: 'Copier', shortcut: '⌘C', action: () => exec('copy') },
+      { label: 'Coller', shortcut: '⌘V', action: () => exec('paste') },
+      { label: 'Tout sélectionner', shortcut: '⌘A', sep: true, action: () => exec('selectAll') },
+    ],
+    Affichage: [
+      { label: 'Zoom avant', action: () => setZoom(z => Math.min(200, z + 10)) },
+      { label: 'Zoom arrière', action: () => setZoom(z => Math.max(50, z - 10)) },
+      { label: 'Zoom 100 %', action: () => setZoom(100) },
+    ],
+    Insertion: [
+      { label: 'Image…', action: insertImage },
+      { label: 'Lien…', action: insertLink },
+      { label: 'Séparateur', action: () => exec('insertHorizontalRule') },
+      { label: 'Date du jour', sep: true, action: () => exec('insertText', new Date().toLocaleDateString('fr-FR')) },
+    ],
+    Format: [
+      { label: 'Gras', shortcut: '⌘B', action: () => exec('bold') },
+      { label: 'Italique', shortcut: '⌘I', action: () => exec('italic') },
+      { label: 'Souligné', shortcut: '⌘U', action: () => exec('underline') },
+      { label: 'Barré', action: () => exec('strikeThrough') },
+      { label: 'Titre 1', sep: true, action: () => block('<h1>') },
+      { label: 'Titre 2', action: () => block('<h2>') },
+      { label: 'Corps de texte', action: () => block('<p>') },
+      { label: 'Citation', action: () => block('<blockquote>') },
+    ],
+  };
+  const runMenu = (item: MItem) => { item.action(); setOpenMenu(null); };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--panel)' }}>
@@ -210,8 +255,33 @@ function WordProcessor({ doc, onSave, onDelete }: { doc: Document; onSave: (titl
       {/* Barre de titre */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, height: 38, padding: '0 8px', background: 'var(--panel2)', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
         <div style={{ display: 'flex' }}>
-          {['Fichier', 'Édition', 'Affichage', 'Insertion', 'Format'].map(m => (
-            <span key={m} style={{ fontSize: 12.5, color: 'var(--sub2)', padding: '0 9px', height: 38, display: 'flex', alignItems: 'center', cursor: 'default' }}>{m}</span>
+          {openMenu && <div onMouseDown={() => setOpenMenu(null)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />}
+          {Object.keys(menus).map(m => (
+            <div key={m} style={{ position: 'relative' }}>
+              <span
+                onMouseDown={e => { e.preventDefault(); setOpenMenu(o => (o === m ? null : m)); }}
+                onMouseEnter={() => { if (openMenu) setOpenMenu(m); }}
+                style={{ fontSize: 12.5, color: openMenu === m ? 'var(--ink)' : 'var(--sub2)', background: openMenu === m ? 'var(--panel)' : 'transparent', padding: '0 9px', height: 38, display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+              >{m}</span>
+              {openMenu === m && (
+                <div style={{ position: 'absolute', top: 38, left: 0, zIndex: 41, minWidth: 210, background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 10, boxShadow: 'var(--shadow-md)', padding: '5px 0' }}>
+                  {menus[m].map((it, i) => (
+                    <div key={i}>
+                      {it.sep && <div style={{ height: 1, background: 'var(--line)', margin: '5px 0' }} />}
+                      <div
+                        onMouseDown={e => { e.preventDefault(); runMenu(it); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 13px', fontSize: 12.5, color: 'var(--ink2)', cursor: 'pointer' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <span style={{ flex: 1 }}>{it.label}</span>
+                        {it.shortcut && <span style={{ fontSize: 11, color: 'var(--sub2)' }}>{it.shortcut}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
         <input
@@ -238,49 +308,67 @@ function WordProcessor({ doc, onSave, onDelete }: { doc: Document; onSave: (titl
       </div>
 
       {/* Ruban */}
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, padding: '6px 8px', background: 'var(--panel2)', borderBottom: '1px solid var(--line)', flexShrink: 0, flexWrap: 'wrap' }}>
-        <RibbonGroup label="Police">
-          <select onChange={e => exec('fontName', e.target.value)} title="Police" style={selStyle}>
-            <option>Georgia</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Courier New</option>
-          </select>
-          <select onChange={e => exec('fontSize', e.target.value)} defaultValue="3" title="Taille" style={{ ...selStyle, width: 46 }}>
-            <option value="1">10</option><option value="2">12</option><option value="3">14</option><option value="4">16</option><option value="5">18</option><option value="6">24</option><option value="7">32</option>
-          </select>
-          <Rb onClick={() => exec('bold')} title="Gras"><strong>G</strong></Rb>
-          <Rb onClick={() => exec('italic')} title="Italique"><em>I</em></Rb>
-          <Rb onClick={() => exec('underline')} title="Souligné"><span style={{ textDecoration: 'underline' }}>S</span></Rb>
-          <Rb onClick={() => exec('strikeThrough')} title="Barré"><span style={{ textDecoration: 'line-through' }}>S</span></Rb>
-          <label title="Couleur du texte" style={{ width: 26, height: 26, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', color: 'var(--sub2)' }}>
-            <span style={{ fontWeight: 700 }}>A</span>
-            <input type="color" onChange={e => exec('foreColor', e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-          </label>
-        </RibbonGroup>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, padding: '6px 8px', background: 'var(--panel2)', borderBottom: '1px solid var(--line)', flexShrink: 0, flexWrap: 'wrap', minHeight: 58 }}>
+        {ribbonTab === 'Accueil' && (
+          <>
+            <RibbonGroup label="Police">
+              <select onChange={e => exec('fontName', e.target.value)} title="Police" style={selStyle}>
+                <option>Georgia</option><option>Arial</option><option>Times New Roman</option><option>Calibri</option><option>Courier New</option>
+              </select>
+              <select onChange={e => exec('fontSize', e.target.value)} defaultValue="3" title="Taille" style={{ ...selStyle, width: 46 }}>
+                <option value="1">10</option><option value="2">12</option><option value="3">14</option><option value="4">16</option><option value="5">18</option><option value="6">24</option><option value="7">32</option>
+              </select>
+              <Rb onClick={() => exec('bold')} title="Gras"><strong>G</strong></Rb>
+              <Rb onClick={() => exec('italic')} title="Italique"><em>I</em></Rb>
+              <Rb onClick={() => exec('underline')} title="Souligné"><span style={{ textDecoration: 'underline' }}>S</span></Rb>
+              <Rb onClick={() => exec('strikeThrough')} title="Barré"><span style={{ textDecoration: 'line-through' }}>S</span></Rb>
+              <label title="Couleur du texte" style={{ width: 26, height: 26, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', color: 'var(--sub2)' }}>
+                <span style={{ fontWeight: 700 }}>A</span>
+                <input type="color" onChange={e => exec('foreColor', e.target.value)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+              </label>
+            </RibbonGroup>
 
-        <RibbonGroup label="Paragraphe">
-          <Rb onClick={() => exec('justifyLeft')} title="Aligner à gauche"><AlignIcon d="left" /></Rb>
-          <Rb onClick={() => exec('justifyCenter')} title="Centrer"><AlignIcon d="center" /></Rb>
-          <Rb onClick={() => exec('justifyRight')} title="Aligner à droite"><AlignIcon d="right" /></Rb>
-          <Rb onClick={() => exec('justifyFull')} title="Justifier"><AlignIcon d="full" /></Rb>
-          <span style={sepStyle} />
-          <Rb onClick={() => exec('insertUnorderedList')} title="Liste à puces">•≡</Rb>
-          <Rb onClick={() => exec('insertOrderedList')} title="Liste numérotée">1.</Rb>
-          <Rb onClick={() => exec('outdent')} title="Diminuer le retrait">⇤</Rb>
-          <Rb onClick={() => exec('indent')} title="Augmenter le retrait">⇥</Rb>
-        </RibbonGroup>
+            <RibbonGroup label="Paragraphe">
+              <Rb onClick={() => exec('justifyLeft')} title="Aligner à gauche"><AlignIcon d="left" /></Rb>
+              <Rb onClick={() => exec('justifyCenter')} title="Centrer"><AlignIcon d="center" /></Rb>
+              <Rb onClick={() => exec('justifyRight')} title="Aligner à droite"><AlignIcon d="right" /></Rb>
+              <Rb onClick={() => exec('justifyFull')} title="Justifier"><AlignIcon d="full" /></Rb>
+              <span style={sepStyle} />
+              <Rb onClick={() => exec('insertUnorderedList')} title="Liste à puces">•≡</Rb>
+              <Rb onClick={() => exec('insertOrderedList')} title="Liste numérotée">1.</Rb>
+              <Rb onClick={() => exec('outdent')} title="Diminuer le retrait">⇤</Rb>
+              <Rb onClick={() => exec('indent')} title="Augmenter le retrait">⇥</Rb>
+            </RibbonGroup>
 
-        <RibbonGroup label="Styles">
-          <Rb wide onClick={() => block('<h1>')} title="Titre 1">Titre 1</Rb>
-          <Rb wide onClick={() => block('<h2>')} title="Titre 2">Titre 2</Rb>
-          <Rb wide onClick={() => block('<h3>')} title="Sous-titre">Sous-titre</Rb>
-          <Rb wide onClick={() => block('<p>')} title="Corps du texte">Corps</Rb>
-          <Rb wide onClick={() => block('<blockquote>')} title="Citation"><em>Citation</em></Rb>
-        </RibbonGroup>
+            <RibbonGroup label="Styles">
+              <Rb wide onClick={() => block('<h1>')} title="Titre 1">Titre 1</Rb>
+              <Rb wide onClick={() => block('<h2>')} title="Titre 2">Titre 2</Rb>
+              <Rb wide onClick={() => block('<h3>')} title="Sous-titre">Sous-titre</Rb>
+              <Rb wide onClick={() => block('<p>')} title="Corps du texte">Corps</Rb>
+              <Rb wide onClick={() => block('<blockquote>')} title="Citation"><em>Citation</em></Rb>
+            </RibbonGroup>
+          </>
+        )}
 
-        <RibbonGroup label="Insertion">
-          <Rb onClick={() => { const url = prompt('URL de l\'image'); if (url) exec('insertImage', url); }} title="Image">🖼</Rb>
-          <Rb onClick={() => exec('insertHorizontalRule')} title="Séparateur">―</Rb>
-          <Rb onClick={() => { const url = prompt('URL du lien'); if (url) exec('createLink', url); }} title="Lien">🔗</Rb>
-        </RibbonGroup>
+        {ribbonTab === 'Insertion' && (
+          <RibbonGroup label="Insertion">
+            <Rb wide onClick={insertImage} title="Image">🖼 Image</Rb>
+            <Rb wide onClick={() => exec('insertHorizontalRule')} title="Séparateur">― Séparateur</Rb>
+            <Rb wide onClick={insertLink} title="Lien">🔗 Lien</Rb>
+            <Rb wide onClick={() => exec('insertText', new Date().toLocaleDateString('fr-FR'))} title="Date du jour">📅 Date</Rb>
+          </RibbonGroup>
+        )}
+
+        {(ribbonTab === 'Mise en page' || ribbonTab === 'Affichage') && (
+          <RibbonGroup label="Zoom">
+            <Rb onClick={() => setZoom(z => Math.max(50, z - 10))} title="Dézoomer">−</Rb>
+            <span style={{ fontSize: 11.5, color: 'var(--sub2)', minWidth: 36, textAlign: 'center' }}>{zoom}%</span>
+            <Rb onClick={() => setZoom(z => Math.min(200, z + 10))} title="Zoomer">+</Rb>
+            <span style={sepStyle} />
+            <Rb wide onClick={() => setZoom(100)} title="Taille réelle">100 %</Rb>
+            <Rb wide onClick={() => setZoom(140)} title="Agrandir">140 %</Rb>
+          </RibbonGroup>
+        )}
       </div>
 
       {/* Règle */}
