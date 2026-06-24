@@ -34,6 +34,8 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
   const [creatingDoc, setCreatingDoc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'view' | 'edit'>('view');
+  const [docSearch, setDocSearch] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // Build document tree
   const tree = useMemo(() => {
@@ -116,72 +118,121 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
     setCreatingDoc(false);
   };
 
+  // Fil d'Ariane (dossier parent → document courant)
+  const parent = selected?.parent_id ? tree.byId.get(selected.parent_id) : null;
+
+  // Recherche dans la barre latérale
+  const q = docSearch.trim().toLowerCase();
+  const searchResults = q ? documents.filter(d => d.title.toLowerCase().includes(q)) : [];
+
+  // Sommaire « Sur cette page » généré depuis les titres (blocs h / h2)
+  const stripHtml = (s: string) => s.replace(/<[^>]+>/g, '').trim();
+  const headings = (Array.isArray(selected?.content) ? (selected!.content as Record<string, unknown>[]) : [])
+    .map((b, i) => ({ i, type: String(b.type || ''), text: stripHtml(String(b.content || '')) }))
+    .filter(h => (h.type === 'h' || h.type === 'h2') && h.text);
+  const scrollToBlock = (i: number) => document.getElementById('doc-blk-' + i)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const copyLink = () => {
+    if (!selected) return;
+    try { navigator.clipboard?.writeText(`${location.origin}/#doc-${selected.id}`); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
-      {/* Tree sidebar */}
-      <div style={{ width: 268, flexShrink: 0, borderRight: '1px solid var(--line)', background: 'var(--panel2)', overflowY: 'auto', padding: '16px 12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 8px 12px' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--sub2)', flex: 1 }}>Espace Docs</span>
-          <div
-            onClick={() => { setNewDocTitle(''); setNewDocEmoji('📝'); setIsEditing(false); }}
-            title="Nouvelle page"
-            style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 4, borderRadius: 5, transition: 'background .1s' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+      {/* Sidebar Docs */}
+      <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--line)', background: 'var(--panel2)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '14px 12px 10px', borderBottom: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 11 }}>
+            <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>Lyova Docs</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 8, padding: '6px 9px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--sub2)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
+            <input value={docSearch} onChange={e => setDocSearch(e.target.value)} placeholder="Rechercher un document…" style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 12.5, color: 'var(--ink)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
           </div>
         </div>
 
-        {/* New doc mini form */}
-        <div style={{ marginBottom: 10, padding: '0 8px' }}>
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4 }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 4px 8px' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--sub2)', flex: 1 }}>{q ? 'Résultats' : 'Documents'}</span>
+            <div
+              onClick={() => { setNewDocTitle(''); setNewDocEmoji('📝'); setIsEditing(false); }}
+              title="Nouvelle page"
+              style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 3, borderRadius: 5, transition: 'background .1s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            </div>
+          </div>
+
+          {/* New doc mini form */}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 10, padding: '0 2px' }}>
             <input
               value={newDocTitle}
               onChange={e => setNewDocTitle(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateDoc(); }}
               placeholder="Nouvelle page…"
-              style={{
-                flex: 1, border: '1px solid var(--line2)', borderRadius: 8, padding: '6px 8px',
-                fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', background: 'var(--panel)',
-                outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-              }}
+              style={{ flex: 1, border: '1px solid var(--line2)', borderRadius: 8, padding: '6px 8px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', background: 'var(--panel)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}
             />
             <button
               onClick={handleCreateDoc}
               disabled={!newDocTitle.trim() || creatingDoc}
-              style={{
-                background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6,
-                padding: '5px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                opacity: !newDocTitle.trim() || creatingDoc ? 0.5 : 1,
-              }}
+              style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', opacity: !newDocTitle.trim() || creatingDoc ? 0.5 : 1 }}
             >{creatingDoc ? '…' : 'OK'}</button>
           </div>
+
+          {q ? (
+            searchResults.length > 0 ? searchResults.map(d => (
+              <div key={d.id} onClick={() => app.openDoc(d.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 7, cursor: 'pointer', fontSize: 12.5, color: selectedId === d.id ? 'var(--accent-ink)' : 'var(--ink2)', background: selectedId === d.id ? 'var(--accent-soft)' : 'transparent' }}>
+                <span style={{ fontSize: 14 }}>{d.emoji}</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
+              </div>
+            )) : <div style={{ padding: '14px 8px', color: 'var(--sub2)', fontSize: 12 }}>Aucun résultat pour « {docSearch} ».</div>
+          ) : (
+            <>
+              {tree.roots.map(doc => (
+                <DocTreeNode key={doc.id} doc={doc} children={tree.children} selectedId={selectedId} onSelect={app.openDoc} depth={0} />
+              ))}
+              {documents.length === 0 && (
+                <div style={{ padding: '20px 8px', textAlign: 'center', color: 'var(--sub2)', fontSize: 12 }}>Aucun document. Créez votre première page.</div>
+              )}
+            </>
+          )}
         </div>
-
-        {/* Doc tree */}
-        {tree.roots.map(doc => (
-          <DocTreeNode
-            key={doc.id}
-            doc={doc}
-            children={tree.children}
-            selectedId={selectedId}
-            onSelect={app.openDoc}
-            depth={0}
-          />
-        ))}
-
-        {documents.length === 0 && (
-          <div style={{ padding: '20px 8px', textAlign: 'center', color: 'var(--sub2)', fontSize: 12 }}>
-            Aucun document. Créez votre première page.
-          </div>
-        )}
       </div>
 
-      {/* Doc content */}
-      <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '44px 56px 60px' }}>
+      {/* Colonne principale */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Barre supérieure : fil d'Ariane + contributeurs */}
+        {selected && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, height: 46, padding: '0 20px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--sub2)', minWidth: 0 }}>
+              {parent && <><span style={{ whiteSpace: 'nowrap' }}>{parent.emoji} {parent.title}</span><span style={{ color: 'var(--faint)' }}>/</span></>}
+              <span style={{ color: 'var(--ink)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selected.title}</span>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {selected.author && (
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: selected.author.color, color: '#fff', fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }} title={selected.author.name}>{selected.author.initials}</div>
+              )}
+              <button onClick={copyLink} title="Copier le lien" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '5px 11px', borderRadius: 8, border: '1px solid var(--line2)', background: 'transparent', color: 'var(--sub2)', cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></svg>
+                {copied ? 'Copié ✓' : 'Lien'}
+              </button>
+              <button onClick={isEditing ? saveDoc : startEditing} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '5px 13px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>
+                {isEditing ? (saving ? 'Enregistrement…' : 'Enregistrer') : 'Modifier'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+          {/* Éditeur (zone défilante) */}
+          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '32px 44px 60px' }}>
         {!selected ? (
           <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center', padding: '80px 0', color: 'var(--sub2)' }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" strokeWidth="1.5" style={{ margin: '0 auto 16px' }}>
@@ -191,43 +242,14 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
           </div>
         ) : (
           <div style={{ maxWidth: 720, margin: '0 auto' }}>
-            {/* Toolbar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, paddingBottom: 14, borderBottom: '1px solid var(--line)' }}>
-              <div style={{ display: 'flex', background: 'var(--soft)', borderRadius: 8, padding: 3 }}>
-                <div
-                  onClick={() => { setIsEditing(false); setActiveTab('view'); }}
-                  style={{
-                    padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    color: activeTab === 'view' ? 'var(--ink)' : 'var(--sub2)',
-                    background: activeTab === 'view' ? 'var(--panel)' : 'transparent',
-                    boxShadow: activeTab === 'view' ? 'var(--shadow)' : 'none',
-                    transition: 'all .1s',
-                  }}
-                >Vue</div>
-                <div
-                  onClick={startEditing}
-                  style={{
-                    padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    color: activeTab === 'edit' ? 'var(--ink)' : 'var(--sub2)',
-                    background: activeTab === 'edit' ? 'var(--panel)' : 'transparent',
-                    boxShadow: activeTab === 'edit' ? 'var(--shadow)' : 'none',
-                    transition: 'all .1s',
-                  }}
-                >Éditer</div>
-              </div>
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: 'var(--sub2)' }}>
-                  Modifié {selected.updated_at ? new Date(selected.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—'}
-                </span>
-                {selected.author && (
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: selected.author.color, color: '#fff', fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {selected.author.initials}
-                  </div>
-                )}
-                <button onClick={async () => { if (await confirmDialog('Supprimer le document ?', { message: `« ${selected.title} »`, danger: true })) app.deleteDocument(selected.id); }} title="Supprimer le document" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                </button>
-              </div>
+            {/* Méta */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--sub2)' }}>
+                Mis à jour le {selected.updated_at ? new Date(selected.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}{selected.author ? ` · ${selected.author.name}` : ''}
+              </span>
+              <button onClick={async () => { if (await confirmDialog('Supprimer le document ?', { message: `« ${selected.title} »`, danger: true })) app.deleteDocument(selected.id); }} title="Supprimer le document" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--sub2)', display: 'flex', padding: 4, borderRadius: 6 }} onMouseEnter={e => (e.currentTarget.style.color = '#ef4444')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+              </button>
             </div>
 
             {/* Title */}
@@ -320,7 +342,9 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
                 {/* Render content */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                   {Array.isArray(selected.content) && selected.content.length > 0 ? (selected.content as unknown[]).map((block, i) => (
-                    <DocBlockRenderer key={i} block={block as Record<string, unknown>} />
+                    <div key={i} id={'doc-blk-' + i} style={{ scrollMarginTop: 16 }}>
+                      <DocBlockRenderer block={block as Record<string, unknown>} />
+                    </div>
                   )) : (
                     <div style={{ color: 'var(--sub2)', fontSize: 14, fontStyle: 'italic' }}>
                       Ce document est vide. Cliquez sur « Éditer » pour commencer.
@@ -357,6 +381,43 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
             )}
           </div>
         )}
+          </div>
+
+          {/* Panneau Sommaire (droite) */}
+          {selected && !isEditing && (
+            <aside style={{ width: 200, flexShrink: 0, borderLeft: '1px solid var(--line)', background: 'var(--panel2)', padding: '18px 14px', overflowY: 'auto' }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 10 }}>Sur cette page</div>
+              {headings.length > 0 ? headings.map(h => (
+                <div
+                  key={h.i}
+                  onClick={() => scrollToBlock(h.i)}
+                  style={{ fontSize: 12, color: 'var(--sub2)', cursor: 'pointer', paddingLeft: h.type === 'h2' ? 16 : 8, padding: h.type === 'h2' ? '3px 0 3px 16px' : '3px 0 3px 8px', borderLeft: '2px solid transparent', lineHeight: 1.45 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--sub2)')}
+                >{h.text}</div>
+              )) : (
+                <div style={{ fontSize: 11.5, color: 'var(--faint)', lineHeight: 1.5 }}>Ajoute des titres (Titre / Sous-titre) pour générer le sommaire.</div>
+              )}
+
+              {selected.author && (
+                <>
+                  <div style={{ height: 1, background: 'var(--line)', margin: '14px 0' }} />
+                  <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Auteur</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: selected.author.color, color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{selected.author.initials}</span>
+                    <span style={{ fontSize: 11.5, color: 'var(--sub2)' }}>{selected.author.name}</span>
+                  </div>
+                </>
+              )}
+
+              <div style={{ height: 1, background: 'var(--line)', margin: '14px 0' }} />
+              <div onClick={copyLink} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: 'var(--sub2)', cursor: 'pointer', padding: '3px 0' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></svg>
+                {copied ? 'Lien copié ✓' : 'Copier le lien'}
+              </div>
+            </aside>
+          )}
+        </div>
       </div>
     </div>
   );
