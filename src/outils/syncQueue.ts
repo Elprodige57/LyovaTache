@@ -24,6 +24,14 @@ const REGISTRY: Record<string, (...args: any[]) => Promise<unknown>> = {
   createColumn: (b, n, c, p) => api.createColumn(b, n, c, p),
   addComment: (t, m, c) => api.addComment(t, m, c),
   updateChecklistItem: (i, u) => api.updateChecklistItem(i, u),
+  // Édition de structure / contenu — rejouée au retour du réseau (offline élargi)
+  updateColumn: (id, u) => api.updateColumn(id, u),
+  deleteColumn: (id) => api.deleteColumn(id),
+  updateBoard: (id, u) => api.updateBoard(id, u),
+  updateFolder: (id, u) => api.updateFolder(id, u),
+  updateDocument: (id, u) => api.updateDocument(id, u),
+  deleteDocument: (id) => api.deleteDocument(id),
+  updateAutomation: (id, u) => api.updateAutomation(id, u),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 

@@ -370,7 +370,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateDocument = useCallback(async (docId: string, updates: { title?: string; content?: unknown[]; emoji?: string }) => {
-    await api.updateDocument(docId, updates);
+    await runOrQueue('updateDocument', [docId, updates]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
@@ -390,7 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteColumn = useCallback(async (columnId: string) => {
-    await api.deleteColumn(columnId);
+    await runOrQueue('deleteColumn', [columnId]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
@@ -400,22 +400,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateBoard = useCallback(async (boardId: string, updates: { name?: string; color?: string; description?: string }) => {
-    await api.updateBoard(boardId, updates);
+    await runOrQueue('updateBoard', [boardId, updates]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const updateFolder = useCallback(async (folderId: string, updates: { name?: string }) => {
-    await api.updateFolder(folderId, updates);
+    await runOrQueue('updateFolder', [folderId, updates]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const updateColumn = useCallback(async (columnId: string, updates: { name?: string; color?: string; wip_limit?: number; position?: number }) => {
-    await api.updateColumn(columnId, updates);
+    await runOrQueue('updateColumn', [columnId, updates]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
   const deleteDocument = useCallback(async (docId: string) => {
-    await api.deleteDocument(docId);
+    await runOrQueue('deleteDocument', [docId]);
     setState(s => ({ ...s, selectedDocId: s.selectedDocId === docId ? null : s.selectedDocId, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
@@ -475,7 +475,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateAutomationActive = useCallback(async (automationId: string, active: boolean) => {
-    await api.updateAutomation(automationId, { is_active: active });
+    await runOrQueue('updateAutomation', [automationId, { is_active: active }]);
     setState(s => ({ ...s, refreshCounter: s.refreshCounter + 1 }));
   }, []);
 
