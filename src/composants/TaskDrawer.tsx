@@ -11,6 +11,7 @@ interface TaskDrawerProps {
   currentMember: Member | null;
   allLabels?: Label[];
   allDocuments?: Document[];
+  workspaceId?: string;
 }
 
 const PRIO_MAP: Record<string, { label: string; color: string }> = {
@@ -22,8 +23,9 @@ const PRIO_MAP: Record<string, { label: string; color: string }> = {
 
 const PRIOS = ['urgent', 'high', 'medium', 'low'] as const;
 
-export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDocuments = [] }: TaskDrawerProps) {
+export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDocuments = [], workspaceId }: TaskDrawerProps) {
   const app = useApp();
+  const wsId = workspaceId || app.activeWorkspaceId;
   const linkedDocs = useDocumentLinks('task', task?.id, app.refreshCounter);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -121,7 +123,7 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDo
     if (!c || !currentMember || sendingComment) return;
     setSendingComment(true);
     await app.postComment(task.id, currentMember.id, c);
-    await createNotification('00000000-0000-0000-0000-000000000001', `${currentMember.name} a commenté « ${task.title} »`, '💬');
+    await createNotification(wsId, `${currentMember.name} a commenté « ${task.title} »`, '💬');
     setNewComment('');
     setSendingComment(false);
   };
@@ -182,7 +184,7 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDo
     // Tag → mention + notification dans l'espace perso de la personne
     await addTaskMention(task.id, m.id);
     if (m.id !== currentMember?.id) {
-      await createNotification('00000000-0000-0000-0000-000000000001', `${currentMember?.name ?? 'Quelqu\'un'} t'a tagué sur « ${task.title} »`, '🏷️', m.id);
+      await createNotification(wsId, `${currentMember?.name ?? 'Quelqu\'un'} t'a tagué sur « ${task.title} »`, '🏷️', m.id);
     }
     setShowAssigneePicker(false);
   };

@@ -31,11 +31,15 @@ export function useWorkspaces(refreshKey = 0) {
   return workspaces;
 }
 
-// Crée un espace de travail + un membre propriétaire par défaut (pour qu'il soit utilisable)
+// Crée un espace de travail + le membre propriétaire (le créateur, avec son auth_id pour la RLS)
 export async function createWorkspace(name: string) {
   const { data: ws, error } = await supabase.from('workspaces').insert({ name: cleanInput(name), plan: 'Plan Équipe' }).select().single();
   if (ws) {
-    await supabase.from('members').insert({ workspace_id: ws.id, name: 'Moi', initials: 'MO', color: '#5b50e8', role: 'Propriétaire' });
+    const { data: u } = await supabase.auth.getUser();
+    const meta = u.user?.user_metadata as { name?: string } | undefined;
+    const base = (meta?.name || u.user?.email?.split('@')[0] || 'Moi').replace(/[._-]+/g, ' ').trim();
+    const initials = base.split(/\s+/).map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase() || 'MO';
+    await supabase.from('members').insert({ workspace_id: ws.id, name: base, initials, color: '#5b50e8', role: 'Propriétaire', email: u.user?.email ?? null, auth_id: u.user?.id ?? null });
   }
   return { data: ws as Workspace | null, error };
 }
@@ -552,11 +556,12 @@ export function useCurrentMember(
           const ws = await supabase.from('workspaces').insert({ name: `Espace de ${base}`, plan: 'Gratuit' }).select().single();
           const wsId = (ws.data as { id: string } | null)?.id;
           if (wsId) {
-            await supabase.from('folders').insert({ workspace_id: wsId, name: 'Mes Bureaux', position: 0 });
+            // Le membre propriétaire D'ABORD (sinon la RLS bloque la création du dossier).
             const ins = await supabase.from('members')
               .insert({ workspace_id: wsId, name: base, initials, color, role: 'Propriétaire', email, auth_id: authId })
               .select().single();
             data = (ins.data as Member) ?? null;
+            await supabase.from('folders').insert({ workspace_id: wsId, name: 'Mes Bureaux', position: 0 });
           }
         } finally {
           enProvisionnement.delete(authId);

@@ -31,7 +31,7 @@ export function AutomationsView({ automations }: AutomationsViewProps) {
   const handleCreate = async () => {
     if (!newTitle.trim() || !newTrigger.trim() || !newAction.trim() || saving) return;
     setSaving(true);
-    await app.createAutomation('00000000-0000-0000-0000-000000000001', newTitle.trim(), newTrigger.trim(), newAction.trim());
+    await app.createAutomation(app.activeWorkspaceId, newTitle.trim(), newTrigger.trim(), newAction.trim());
     setNewTitle('');
     setNewTrigger('');
     setNewAction('');

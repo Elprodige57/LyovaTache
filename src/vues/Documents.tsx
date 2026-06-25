@@ -57,7 +57,7 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
     const t = newDocTitle.trim();
     if (!t || creatingDoc) return;
     setCreatingDoc(true);
-    await app.addDocument('00000000-0000-0000-0000-000000000001', t, '📝', null);
+    await app.addDocument(app.activeWorkspaceId, t, '📝', null);
     setNewDocTitle('');
     setCreatingDoc(false);
   };
@@ -126,7 +126,7 @@ export function DocumentsView({ documents }: DocumentsViewProps) {
             doc={selected}
             onSave={(title, html) => app.updateDocument(selected.id, { title: title.trim() || selected.title, content: [{ type: 'doc', html }], emoji: selected.emoji })}
             onDelete={async () => { if (await confirmDialog('Supprimer le document ?', { message: `« ${selected.title} »`, danger: true })) app.deleteDocument(selected.id); }}
-            onNew={() => app.addDocument('00000000-0000-0000-0000-000000000001', 'Nouveau document', '📝', null)}
+            onNew={() => app.addDocument(app.activeWorkspaceId, 'Nouveau document', '📝', null)}
           />
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--sub2)' }}>

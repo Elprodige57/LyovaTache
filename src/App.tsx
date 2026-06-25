@@ -253,6 +253,7 @@ function AppContent({ session }: { session: Session | null }) {
           currentMember={currentMember}
           allLabels={labels}
           allDocuments={documents}
+          workspaceId={WORKSPACE_ID}
         />
       )}
 
