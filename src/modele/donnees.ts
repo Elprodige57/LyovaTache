@@ -509,11 +509,16 @@ export function useAllTasks(boardIds: string[], refreshKey = 0) {
 
 // Résout le membre correspondant au compte Supabase Auth connecté.
 // 1) déjà lié (auth_id) ; 2) rattaché par email ; 3) sinon provisionné.
+// Verrou anti-course : empêche deux exécutions simultanées de provisionner le même compte.
+const enProvisionnement = new Set<string>();
+
+// Résout (ou crée) le membre correspondant au compte connecté.
+// 1) déjà lié (auth_id) ; 2) rattaché par email ; 3) sinon : crée un ESPACE PERSO vide
+//    (espace + dossier + membre Propriétaire) → le nouvel utilisateur démarre chez lui, sans rien.
 export function useCurrentMember(
   authId: string | null,
   email: string | null,
   displayName: string | null,
-  workspaceId: string,
   refreshKey = 0,
 ) {
   const [member, setMember] = useState<Member | null>(null);
@@ -522,29 +527,52 @@ export function useCurrentMember(
     let cancelled = false;
     if (!authId) { setMember(null); return; }
     (async () => {
-      let { data } = await supabase.from('members').select('*').eq('auth_id', authId).maybeSingle();
+      // 1) par auth_id (limit 1 : robuste même s'il restait des doublons)
+      const byAuth = await supabase.from('members').select('*').eq('auth_id', authId).order('created_at').limit(1);
+      let data: Member | null = (byAuth.data?.[0] as Member) ?? null;
+
+      // 2) par email (membre invité non encore lié) → on rattache le compte
       if (!data && email) {
-        const byEmail = await supabase.from('members').select('*').eq('email', email).maybeSingle();
-        if (byEmail.data) {
-          await supabase.from('members').update({ auth_id: authId }).eq('id', byEmail.data.id);
-          data = { ...byEmail.data, auth_id: authId };
+        const byEmail = await supabase.from('members').select('*').eq('email', email).is('auth_id', null).order('created_at').limit(1);
+        if (byEmail.data?.[0]) {
+          const linked = await supabase.from('members').update({ auth_id: authId }).eq('id', (byEmail.data[0] as Member).id).select().single();
+          data = (linked.data as Member) ?? { ...(byEmail.data[0] as Member), auth_id: authId };
         }
       }
-      if (!data) {
-        const base = (displayName?.trim() || email?.split('@')[0] || 'Membre').replace(/[._-]+/g, ' ').trim();
-        const initials = base.split(/\s+/).map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
-        const colors = ['#5b50e8', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#14b8a6', '#ec4899'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const ins = await supabase.from('members')
-          .insert({ workspace_id: workspaceId, name: base, initials, color, role: 'Membre', email, auth_id: authId })
-          .select().single();
-        data = ins.data;
+
+      // 3) sinon : créer un espace de travail personnel + dossier + membre propriétaire
+      if (!data && !enProvisionnement.has(authId)) {
+        enProvisionnement.add(authId);
+        try {
+          const base = (displayName?.trim() || email?.split('@')[0] || 'Membre').replace(/[._-]+/g, ' ').trim();
+          const initials = base.split(/\s+/).map(w => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+          const colors = ['#5b50e8', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#14b8a6', '#ec4899'];
+          const color = colors[Math.floor(Math.random() * colors.length)];
+
+          const ws = await supabase.from('workspaces').insert({ name: `Espace de ${base}`, plan: 'Gratuit' }).select().single();
+          const wsId = (ws.data as { id: string } | null)?.id;
+          if (wsId) {
+            await supabase.from('folders').insert({ workspace_id: wsId, name: 'Mes Bureaux', position: 0 });
+            const ins = await supabase.from('members')
+              .insert({ workspace_id: wsId, name: base, initials, color, role: 'Propriétaire', email, auth_id: authId })
+              .select().single();
+            data = (ins.data as Member) ?? null;
+          }
+        } finally {
+          enProvisionnement.delete(authId);
+        }
+        // En cas de course (insert refusé par l'index unique), on relit le membre existant.
+        if (!data) {
+          const again = await supabase.from('members').select('*').eq('auth_id', authId).limit(1);
+          data = (again.data?.[0] as Member) ?? null;
+        }
       }
-      if (!cancelled) setMember((data as Member) ?? null);
+
+      if (!cancelled) setMember(data);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authId, email, workspaceId, refreshKey]);
+  }, [authId, email]);
 
   return member;
 }

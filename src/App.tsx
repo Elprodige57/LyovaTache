@@ -31,7 +31,6 @@ import { accessibleBoardIds, roleOf } from './outils/access';
 import type { Task, Notification } from './modele/types';
 
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
-const GUEST_MEMBER_ID = '00000000-0000-0000-0001-000000000001'; // Camille (mode démo sans compte)
 
 function AppContent({ session }: { session: Session | null }) {
   const app = useApp();
@@ -67,11 +66,20 @@ function AppContent({ session }: { session: Session | null }) {
     session?.user.id ?? null,
     session?.user.email ?? null,
     (session?.user.user_metadata?.name as string | undefined) ?? null,
-    WORKSPACE_ID,
     app.refreshCounter,
   );
-  const currentMember = session ? authedMember : (members.find(m => m.id === GUEST_MEMBER_ID) ?? members[0] ?? null);
+  const currentMember = authedMember;
   const currentMemberId = currentMember?.id ?? '';
+
+  // À la connexion, on bascule sur l'espace personnel du membre (sauf s'il a déjà choisi un espace).
+  const didInitWs = useRef(false);
+  useEffect(() => {
+    if (didInitWs.current) return;
+    if (authedMember?.workspace_id && !localStorage.getItem('lyova_ws')) {
+      didInitWs.current = true;
+      app.setActiveWorkspace(authedMember.workspace_id);
+    }
+  }, [authedMember, app]);
   const boardMembers = board?.members ?? [];
 
   // Périmètre d'accès du membre connecté : on masque les dossiers/tableaux hors de son périmètre.
