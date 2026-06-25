@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './outils/supabase';
-import { LoginScreen } from './composants/LoginScreen';
+import { Connexion } from './composants/Connexion';
+import { Inscription } from './composants/Inscription';
 import { DialogHost } from './outils/dialog';
 import { flushQueue } from './outils/syncQueue';
 import { AppProvider, useApp } from './controleur/AppContext';
@@ -310,11 +311,13 @@ function NotificationsView({ notifications, workspaceId }: { notifications: Noti
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  // Par défaut on entre directement dans l'app (mode démo). L'écran de connexion
-  // ne s'affiche que si l'utilisateur le demande explicitement (lyova_mode = 'login').
-  const [guest, setGuest] = useState(() => localStorage.getItem('lyova_mode') !== 'login');
+  // Par défaut on demande la connexion. Le mode démo n'est utilisé que si
+  // l'utilisateur le choisit explicitement (lyova_mode = 'guest').
+  const [guest, setGuest] = useState(() => localStorage.getItem('lyova_mode') === 'guest');
+  const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
+    // getSession lit la session locale (fonctionne même hors-ligne / serveur down).
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
@@ -323,7 +326,7 @@ export default function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const enterGuest = () => { localStorage.removeItem('lyova_mode'); setGuest(true); };
+  const enterGuest = () => { localStorage.setItem('lyova_mode', 'guest'); setGuest(true); };
 
   if (!guest && session === undefined) {
     return (
@@ -333,7 +336,11 @@ export default function App() {
     );
   }
 
-  if (!guest && !session) return <LoginScreen onGuest={enterGuest} />;
+  if (!guest && !session) {
+    return authPage === 'login'
+      ? <Connexion onSwitch={() => setAuthPage('signup')} onGuest={enterGuest} />
+      : <Inscription onSwitch={() => setAuthPage('login')} onGuest={enterGuest} />;
+  }
 
   return (
     <AppProvider>
