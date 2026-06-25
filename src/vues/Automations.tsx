@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { confirmDialog } from '../lib/dialog';
-import type { Automation } from '../types';
+import { useApp } from '../controleur/AppContext';
+import { confirmDialog } from '../outils/dialog';
+import type { Automation } from '../modele/types';
 
 interface AutomationsViewProps {
   automations: Automation[];

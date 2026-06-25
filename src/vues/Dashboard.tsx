@@ -1,6 +1,6 @@
-import type { Board, Folder, Member, Task } from '../types';
-import { useApp } from '../context/AppContext';
-import { columnStatus, loadColCats, type Status } from '../lib/status';
+import type { Board, Folder, Member, Task } from '../modele/types';
+import { useApp } from '../controleur/AppContext';
+import { columnStatus, loadColCats, type Status } from '../outils/status';
 
 interface DashboardProps {
   folders: Folder[];

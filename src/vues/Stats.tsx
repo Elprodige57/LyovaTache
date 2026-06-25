@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { Folder, Member } from '../types';
-import { useApp } from '../context/AppContext';
-import { useStatsData, type StatTask } from '../hooks/useData';
-import { columnStatus, loadColCats, type Status } from '../lib/status';
+import type { Folder, Member } from '../modele/types';
+import { useApp } from '../controleur/AppContext';
+import { useStatsData, type StatTask } from '../modele/donnees';
+import { columnStatus, loadColCats, type Status } from '../outils/status';
 
 interface StatsProps {
   folders: Folder[];

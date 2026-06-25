@@ -1,6 +1,6 @@
 import React from 'react';
-import { useApp } from '../context/AppContext';
-import type { Task } from '../types';
+import { useApp } from '../controleur/AppContext';
+import type { Task } from '../modele/types';
 
 interface ArchivesViewProps {
   tasks: Task[];

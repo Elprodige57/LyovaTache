@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import type { Member, Folder, Board } from '../types';
-import { useApp } from '../context/AppContext';
+import type { Member, Folder, Board } from '../modele/types';
+import { useApp } from '../controleur/AppContext';
 import {
   useTeams, useMemberAccess, useInvitations,
   createTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember,
   setMemberAccess, updateInvitationStatus, deleteInvitation,
-} from '../hooks/useData';
-import { ROLE_LABELS, SCOPE_LABELS } from '../lib/access';
-import { confirmDialog, promptDialog } from '../lib/dialog';
-import { InviteWizard } from '../components/InviteWizard';
-import { AccessEditor } from '../components/AccessEditor';
+} from '../modele/donnees';
+import { ROLE_LABELS, SCOPE_LABELS } from '../outils/access';
+import { confirmDialog, promptDialog } from '../outils/dialog';
+import { InviteWizard } from '../composants/InviteWizard';
+import { AccessEditor } from '../composants/AccessEditor';
 
 interface TeamsProps {
   workspaceId: string;

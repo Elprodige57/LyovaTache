@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useApp } from '../context/AppContext';
-import { useTrashedBoards, restoreBoard, purgeBoard, purgeExpiredBoards } from '../hooks/useData';
-import { confirmDialog } from '../lib/dialog';
+import { useApp } from '../controleur/AppContext';
+import { useTrashedBoards, restoreBoard, purgeBoard, purgeExpiredBoards } from '../modele/donnees';
+import { confirmDialog } from '../outils/dialog';
 
 interface TrashProps { workspaceId: string; }
 

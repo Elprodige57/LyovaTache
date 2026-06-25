@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
-import { createMember, addBoardMember, createBoard, createFolder, useDocumentLinks, linkDocument, unlinkDocument } from '../hooks/useData';
-import { getQueueSize, subscribeQueue } from '../lib/syncQueue';
-import type { Board, Member, Label, Folder, Document } from '../types';
+import { useApp } from '../controleur/AppContext';
+import { createMember, addBoardMember, createBoard, createFolder, useDocumentLinks, linkDocument, unlinkDocument } from '../modele/donnees';
+import { getQueueSize, subscribeQueue } from '../outils/syncQueue';
+import type { Board, Member, Label, Folder, Document } from '../modele/types';
 
 interface HeaderProps {
   board?: Board | null;

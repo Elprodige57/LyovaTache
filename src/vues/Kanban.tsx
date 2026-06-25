@@ -1,8 +1,8 @@
 import React, { useState, useRef, useMemo } from 'react';
-import type { Column, Task, Member } from '../types';
-import { useApp } from '../context/AppContext';
-import { confirmDialog } from '../lib/dialog';
-import { columnStatus, setColCat, loadColCats, STATUS_META, STATUS_ORDER } from '../lib/status';
+import type { Column, Task, Member } from '../modele/types';
+import { useApp } from '../controleur/AppContext';
+import { confirmDialog } from '../outils/dialog';
+import { columnStatus, setColCat, loadColCats, STATUS_META, STATUS_ORDER } from '../outils/status';
 
 const PRIO_COLORS: Record<string, string> = {
   urgent: '#ef4444', high: '#f97316', medium: '#6366f1', low: '#94a3b8',

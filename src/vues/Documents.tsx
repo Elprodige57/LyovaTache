@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
-import { confirmDialog } from '../lib/dialog';
-import type { Document } from '../types';
+import { useApp } from '../controleur/AppContext';
+import { confirmDialog } from '../outils/dialog';
+import type { Document } from '../modele/types';
 
 interface DocumentsViewProps {
   documents: Document[];

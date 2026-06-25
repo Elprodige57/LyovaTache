@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
-import type { Task, Folder, Document } from '../types';
+import { useApp } from '../controleur/AppContext';
+import type { Task, Folder, Document } from '../modele/types';
 
 interface SearchResult {
   id: string;

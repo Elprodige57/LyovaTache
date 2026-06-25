@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { Screen, BoardView, Theme, Density, Task, Automation } from '../types';
-import * as api from '../hooks/useData';
-import { runOrQueue } from '../lib/syncQueue';
+import type { Screen, BoardView, Theme, Density, Task, Automation } from '../modele/types';
+import * as api from '../modele/donnees';
+import { runOrQueue } from '../outils/syncQueue';
 
 interface AppState {
   screen: Screen;

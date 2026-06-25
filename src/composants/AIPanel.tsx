@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
+import { useApp } from '../controleur/AppContext';
 
 interface Message {
   isAI?: boolean;

@@ -1,5 +1,5 @@
-import { useApp } from '../context/AppContext';
-import type { Task, Column } from '../types';
+import { useApp } from '../controleur/AppContext';
+import type { Task, Column } from '../modele/types';
 
 interface AgendaProps {
   tasks: Task[];

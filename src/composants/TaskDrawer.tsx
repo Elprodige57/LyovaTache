@@ -1,9 +1,9 @@
 import { useState, useRef } from 'react';
-import { useApp } from '../context/AppContext';
-import { createNotification, addTaskMention, useDocumentLinks, linkDocument, unlinkDocument } from '../hooks/useData';
-import { confirmDialog, promptDialog } from '../lib/dialog';
-import { MarkdownText } from '../lib/richtext';
-import type { Task, Column, Member, Label, Document } from '../types';
+import { useApp } from '../controleur/AppContext';
+import { createNotification, addTaskMention, useDocumentLinks, linkDocument, unlinkDocument } from '../modele/donnees';
+import { confirmDialog, promptDialog } from '../outils/dialog';
+import { MarkdownText } from '../outils/richtext';
+import type { Task, Column, Member, Label, Document } from '../modele/types';
 
 interface TaskDrawerProps {
   task: Task | null;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { Member, Folder, Board, MemberAccess, AccessScope } from '../types';
-import { setMemberAccess } from '../hooks/useData';
-import { SCOPE_LABELS } from '../lib/access';
+import type { Member, Folder, Board, MemberAccess, AccessScope } from '../modele/types';
+import { setMemberAccess } from '../modele/donnees';
+import { SCOPE_LABELS } from '../outils/access';
 
 interface AccessEditorProps {
   workspaceId: string;

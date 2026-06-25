@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
-import { loadCache, saveCache } from '../lib/cache';
-import { cleanInput } from '../lib/sanitizer';
-import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document, ChecklistItem, Notification, Team, MemberAccess, Invitation, AccessScope, AccessRole } from '../types';
+import { supabase } from '../outils/supabase';
+import { loadCache, saveCache } from '../outils/cache';
+import { cleanInput } from '../outils/sanitizer';
+import type { Workspace, Member, Folder, Board, Column, Label, Task, Automation, Document, ChecklistItem, Notification, Team, MemberAccess, Invitation, AccessScope, AccessRole } from '../modele/types';
 
 export function useWorkspace(workspaceId: string | undefined, refreshKey = 0) {
   const [workspace, setWorkspace] = useState<Workspace | null>(() => loadCache<Workspace | null>('workspace_' + (workspaceId ?? ''), null));

@@ -1,4 +1,4 @@
-import type { Folder, MemberAccess, AccessRole } from '../types';
+import type { Folder, MemberAccess, AccessRole } from '../modele/types';
 
 // Résout les tableaux accessibles d'un membre selon son périmètre.
 // Retourne 'all' (accès total) ou la liste des board ids autorisés.

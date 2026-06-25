@@ -1,4 +1,4 @@
-import * as api from '../hooks/useData';
+import * as api from '../modele/donnees';
 
 // File d'attente des écritures faites hors-ligne, rejouées au retour du réseau.
 // Stratégie v1 : « dernier écrit gagne », rejeu dans l'ordre.

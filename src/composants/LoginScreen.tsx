@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { loginSchema, signupSchema } from '../lib/validation/auth';
-import { isRateLimited, resetRateLimit } from '../lib/rate-limit';
+import { supabase } from '../outils/supabase';
+import { loginSchema, signupSchema } from '../outils/validation/auth';
+import { isRateLimited, resetRateLimit } from '../outils/rate-limit';
 
 export function LoginScreen({ onGuest }: { onGuest?: () => void }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { Member, Folder, Board, Team, AccessScope, AccessRole } from '../types';
-import { setMemberAccess, createInvitation, createNotification } from '../hooks/useData';
-import { ROLE_LABELS, SCOPE_LABELS } from '../lib/access';
+import type { Member, Folder, Board, Team, AccessScope, AccessRole } from '../modele/types';
+import { setMemberAccess, createInvitation, createNotification } from '../modele/donnees';
+import { ROLE_LABELS, SCOPE_LABELS } from '../outils/access';
 
 interface InviteWizardProps {
   workspaceId: string;

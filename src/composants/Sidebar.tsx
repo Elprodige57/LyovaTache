@@ -1,6 +1,6 @@
-import { useApp } from '../context/AppContext';
-import { confirmDialog, promptDialog } from '../lib/dialog';
-import type { Workspace, Folder, Member } from '../types';
+import { useApp } from '../controleur/AppContext';
+import { confirmDialog, promptDialog } from '../outils/dialog';
+import type { Workspace, Folder, Member } from '../modele/types';
 
 interface SidebarProps {
   workspace: Workspace | null;

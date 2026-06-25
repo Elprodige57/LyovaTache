@@ -1,33 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from './lib/supabase';
-import { LoginScreen } from './components/LoginScreen';
-import { DialogHost } from './lib/dialog';
-import { flushQueue } from './lib/syncQueue';
-import { AppProvider, useApp } from './context/AppContext';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { TaskDrawer } from './components/TaskDrawer';
-import { AIPanel } from './components/AIPanel';
-import { SettingsPanel } from './components/SettingsPanel';
-import { SearchModal } from './components/SearchModal';
-import { CreateFolderModal } from './components/CreateFolderModal';
-import { Dashboard } from './views/Dashboard';
-import { Stats } from './views/Stats';
-import { Teams } from './views/Teams';
-import { Trash } from './views/Trash';
-import { Kanban } from './views/Kanban';
-import { Agenda } from './views/Agenda';
-import { AutomationsView } from './views/Automations';
-import { DocumentsView } from './views/Documents';
-import { MyTasks } from './views/MyTasks';
-import { ArchivesView } from './views/Archives';
+import { supabase } from './outils/supabase';
+import { LoginScreen } from './composants/LoginScreen';
+import { DialogHost } from './outils/dialog';
+import { flushQueue } from './outils/syncQueue';
+import { AppProvider, useApp } from './controleur/AppContext';
+import { Sidebar } from './composants/Sidebar';
+import { Header } from './composants/Header';
+import { TaskDrawer } from './composants/TaskDrawer';
+import { AIPanel } from './composants/AIPanel';
+import { SettingsPanel } from './composants/SettingsPanel';
+import { SearchModal } from './composants/SearchModal';
+import { CreateFolderModal } from './composants/CreateFolderModal';
+import { Dashboard } from './vues/Dashboard';
+import { Stats } from './vues/Stats';
+import { Teams } from './vues/Teams';
+import { Trash } from './vues/Trash';
+import { Kanban } from './vues/Kanban';
+import { Agenda } from './vues/Agenda';
+import { AutomationsView } from './vues/Automations';
+import { DocumentsView } from './vues/Documents';
+import { MyTasks } from './vues/MyTasks';
+import { ArchivesView } from './vues/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
   useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess
-} from './hooks/useData';
-import { accessibleBoardIds, roleOf } from './lib/access';
-import type { Task, Notification } from './types';
+} from './modele/donnees';
+import { accessibleBoardIds, roleOf } from './outils/access';
+import type { Task, Notification } from './modele/types';
 
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
 const GUEST_MEMBER_ID = '00000000-0000-0000-0001-000000000001'; // Camille (mode démo sans compte)

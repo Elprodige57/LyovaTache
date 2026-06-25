@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useApp } from '../context/AppContext';
-import { supabase } from '../lib/supabase';
-import { updateWorkspace } from '../hooks/useData';
-import { confirmDialog, promptDialog } from '../lib/dialog';
-import { exportBoard, importBoard, downloadJson } from '../lib/boardIO';
-import type { Board, Member, Workspace, Label } from '../types';
+import { useApp } from '../controleur/AppContext';
+import { supabase } from '../outils/supabase';
+import { updateWorkspace } from '../modele/donnees';
+import { confirmDialog, promptDialog } from '../outils/dialog';
+import { exportBoard, importBoard, downloadJson } from '../outils/boardIO';
+import type { Board, Member, Workspace, Label } from '../modele/types';
 
 // Avantages indicatifs par plan (affichés sous le plan).
 function planFeatures(plan: string): string {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import type { Task } from '../types';
+import { useApp } from '../controleur/AppContext';
+import type { Task } from '../modele/types';
 
 interface MyTasksProps {
   tasks: Task[];
