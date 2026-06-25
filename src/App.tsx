@@ -311,24 +311,16 @@ function NotificationsView({ notifications, workspaceId }: { notifications: Noti
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  // Par défaut on demande la connexion. Le mode démo n'est utilisé que si
-  // l'utilisateur le choisit explicitement (lyova_mode = 'guest').
-  const [guest, setGuest] = useState(() => localStorage.getItem('lyova_mode') === 'guest');
   const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     // getSession lit la session locale (fonctionne même hors-ligne / serveur down).
     supabase.auth.getSession().then(({ data }) => setSession(data.session)).catch(() => setSession(null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      if (s) { localStorage.removeItem('lyova_mode'); setGuest(false); }
-    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const enterGuest = () => { localStorage.setItem('lyova_mode', 'guest'); setGuest(true); };
-
-  if (!guest && session === undefined) {
+  if (session === undefined) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--sub2)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontWeight: 600 }}>
         Chargement…
@@ -336,15 +328,16 @@ export default function App() {
     );
   }
 
-  if (!guest && !session) {
+  // Authentification obligatoire (aucun mode démo).
+  if (!session) {
     return authPage === 'login'
-      ? <Connexion onSwitch={() => setAuthPage('signup')} onGuest={enterGuest} />
-      : <Inscription onSwitch={() => setAuthPage('login')} onGuest={enterGuest} />;
+      ? <Connexion onSwitch={() => setAuthPage('signup')} />
+      : <Inscription onSwitch={() => setAuthPage('login')} />;
   }
 
   return (
     <AppProvider>
-      <AppContent session={session ?? null} />
+      <AppContent session={session} />
     </AppProvider>
   );
 }

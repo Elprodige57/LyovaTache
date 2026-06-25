@@ -3,10 +3,9 @@ import { supabase } from '../outils/supabase';
 import { signupSchema } from '../outils/validation/auth';
 import { isRateLimited, resetRateLimit } from '../outils/rate-limit';
 import { AuthShell, champStyle } from './AuthShell';
-import { DemoLink } from './Connexion';
 
 // Page d'inscription (création de compte).
-export function Inscription({ onSwitch, onGuest }: { onSwitch: () => void; onGuest: () => void }) {
+export function Inscription({ onSwitch }: { onSwitch: () => void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,8 +56,6 @@ export function Inscription({ onSwitch, onGuest }: { onSwitch: () => void; onGue
         Déjà un compte ?{' '}
         <span onClick={onSwitch} style={{ color: 'var(--accent-ink)', fontWeight: 700, cursor: 'pointer' }}>Se connecter</span>
       </div>
-
-      <DemoLink onGuest={onGuest} />
     </AuthShell>
   );
 }

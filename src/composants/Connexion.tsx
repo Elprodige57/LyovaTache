@@ -5,7 +5,7 @@ import { isRateLimited, resetRateLimit } from '../outils/rate-limit';
 import { AuthShell, champStyle } from './AuthShell';
 
 // Page de connexion (compte existant).
-export function Connexion({ onSwitch, onGuest }: { onSwitch: () => void; onGuest: () => void }) {
+export function Connexion({ onSwitch }: { onSwitch: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -47,23 +47,6 @@ export function Connexion({ onSwitch, onGuest }: { onSwitch: () => void; onGuest
         Pas encore de compte ?{' '}
         <span onClick={onSwitch} style={{ color: 'var(--accent-ink)', fontWeight: 700, cursor: 'pointer' }}>Créer un compte</span>
       </div>
-
-      <DemoLink onGuest={onGuest} />
     </AuthShell>
-  );
-}
-
-export function DemoLink({ onGuest }: { onGuest: () => void }) {
-  return (
-    <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px' }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-        <span style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600 }}>ou</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-      </div>
-      <button onClick={onGuest} style={{ width: '100%', background: 'transparent', color: 'var(--sub2)', border: '1px solid var(--line2)', borderRadius: 10, padding: '9px 14px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-        Continuer sans compte (mode démo)
-      </button>
-    </>
   );
 }
