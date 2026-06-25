@@ -318,7 +318,7 @@ export default function App() {
 
   useEffect(() => {
     // getSession lit la session locale (fonctionne même hors-ligne / serveur down).
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => setSession(data.session)).catch(() => setSession(null));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s) { localStorage.removeItem('lyova_mode'); setGuest(false); }
