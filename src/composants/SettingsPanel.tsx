@@ -5,6 +5,7 @@ import { updateWorkspace } from '../modele/donnees';
 import { confirmDialog, promptDialog } from '../outils/dialog';
 import { exportBoard, importBoard, downloadJson } from '../outils/boardIO';
 import { BG_PRESETS, loadBg, applyBg, bgFromImageUrl, SOUND_PRESETS, loadSound, saveSound, playSound, type SoundId } from '../outils/apparence';
+import { compressImage, uploadPerso } from '../outils/upload';
 import type { Board, Member, Workspace, Label } from '../modele/types';
 
 // Avantages indicatifs par plan (affichés sous le plan).
@@ -49,6 +50,35 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
   const [soundUrl, setSoundUrl] = useState(initSnd.url);
   const chooseBg = (value: string) => { setBg(value); applyBg(value); };
   const chooseSound = (id: SoundId, url = soundUrl) => { setSoundId(id); saveSound(id, url); if (id !== 'off') playSound(id, url); };
+  const bgFileRef = useRef<HTMLInputElement>(null);
+  const soundFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingSound, setUploadingSound] = useState(false);
+  const [persoMsg, setPersoMsg] = useState<string | null>(null);
+
+  const onPickBg = async (file: File | undefined) => {
+    if (!file) return;
+    setPersoMsg(null); setUploadingBg(true);
+    try {
+      const blob = await compressImage(file);
+      const url = await uploadPerso(blob, 'jpg', 'fond');
+      if (url) chooseBg(bgFromImageUrl(url));
+      else setPersoMsg('Téléversement impossible (connexion ?).');
+    } catch { setPersoMsg('Image illisible.'); }
+    finally { setUploadingBg(false); if (bgFileRef.current) bgFileRef.current.value = ''; }
+  };
+
+  const onPickSound = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 1_500_000) { setPersoMsg('Son trop lourd (max 1,5 Mo).'); return; }
+    setPersoMsg(null); setUploadingSound(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'mp3').toLowerCase();
+      const url = await uploadPerso(file, ext, 'son');
+      if (url) { setSoundId('custom'); setSoundUrl(url); saveSound('custom', url); playSound('custom', url); }
+      else setPersoMsg('Téléversement impossible (connexion ?).');
+    } finally { setUploadingSound(false); if (soundFileRef.current) soundFileRef.current.value = ''; }
+  };
 
   // Charge le nom d'espace et les préférences de notif existants
   useEffect(() => { if (workspace?.name) setWorkspaceName(workspace.name); }, [workspace?.name]);
@@ -242,6 +272,12 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
                   <input value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="…ou image par URL (https://…)" style={{ flex: 1, border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 11px', fontSize: 13, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
                   <button onClick={() => { if (bgUrl.trim()) chooseBg(bgFromImageUrl(bgUrl.trim())); }} disabled={!bgUrl.trim()} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: bgUrl.trim() ? 1 : 0.5, fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>Appliquer</button>
                 </div>
+                <button onClick={() => bgFileRef.current?.click()} disabled={uploadingBg} style={{ marginTop: 8, width: '100%', background: 'transparent', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", opacity: uploadingBg ? 0.6 : 1 }}>
+                  {uploadingBg ? 'Téléversement…' : '🖼 Choisir une image sur mon PC'}
+                </button>
+                <input ref={bgFileRef} type="file" accept="image/*" onChange={e => onPickBg(e.target.files?.[0])} style={{ display: 'none' }} />
+                {bg.startsWith('url(') && <button onClick={() => chooseBg('')} style={{ marginTop: 6, background: 'transparent', color: 'var(--sub2)', border: 'none', fontSize: 12, cursor: 'pointer' }}>Retirer le fond personnalisé</button>}
+                <div style={{ fontSize: 11, color: 'var(--sub2)', marginTop: 6 }}>L'image est compressée puis stockée sur le serveur (max 3 Mo).</div>
               </div>
 
               {/* Son de notification */}
@@ -261,6 +297,12 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
                     <button onClick={() => { saveSound('custom', soundUrl); playSound('custom', soundUrl); }} style={{ background: 'transparent', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>Tester</button>
                   </div>
                 )}
+                <button onClick={() => soundFileRef.current?.click()} disabled={uploadingSound} style={{ marginTop: 8, width: '100%', background: 'transparent', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '9px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", opacity: uploadingSound ? 0.6 : 1 }}>
+                  {uploadingSound ? 'Téléversement…' : '🎵 Choisir un son sur mon PC'}
+                </button>
+                <input ref={soundFileRef} type="file" accept="audio/*" onChange={e => onPickSound(e.target.files?.[0])} style={{ display: 'none' }} />
+                <div style={{ fontSize: 11, color: 'var(--sub2)', marginTop: 6 }}>Stocké sur le serveur (max 1,5 Mo).</div>
+                {persoMsg && <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 600, marginTop: 6 }}>{persoMsg}</div>}
               </div>
             </div>
           )}
