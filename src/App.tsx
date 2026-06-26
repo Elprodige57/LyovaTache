@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './outils/supabase';
 import { Connexion } from './composants/Connexion';
 import { Inscription } from './composants/Inscription';
+import { DeverrouillageHorsLigne } from './composants/DeverrouillageHorsLigne';
+import { loadOfflineCredential } from './outils/offlineAuth';
 import { DialogHost } from './outils/dialog';
 import { flushQueue } from './outils/syncQueue';
 import { AppProvider, useApp } from './controleur/AppContext';
@@ -338,15 +340,22 @@ function NotificationsView({ notifications, workspaceId }: { notifications: Noti
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
+  const [online, setOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [offlineSession, setOfflineSession] = useState<Session | null>(null);
 
   useEffect(() => {
     // getSession lit la session locale (fonctionne même hors-ligne / serveur down).
     supabase.auth.getSession().then(({ data }) => setSession(data.session)).catch(() => setSession(null));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
+    const on = () => setOnline(true), off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { sub.subscription.unsubscribe(); window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  if (session === undefined) {
+  const activeSession = session ?? offlineSession;
+
+  if (session === undefined && !offlineSession) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--sub2)', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", fontWeight: 600 }}>
         Chargement…
@@ -354,8 +363,12 @@ export default function App() {
     );
   }
 
-  // Authentification obligatoire (aucun mode démo).
-  if (!session) {
+  if (!activeSession) {
+    // Pas de session. Hors-ligne avec un compte déjà utilisé ici → déverrouillage local.
+    const cred = loadOfflineCredential();
+    if (!online && cred) {
+      return <DeverrouillageHorsLigne cred={cred} onUnlock={(c) => setOfflineSession({ user: { id: c.authId, email: c.email, user_metadata: { name: c.name } } } as unknown as Session)} />;
+    }
     return authPage === 'login'
       ? <Connexion onSwitch={() => setAuthPage('signup')} />
       : <Inscription onSwitch={() => setAuthPage('login')} />;
@@ -363,7 +376,7 @@ export default function App() {
 
   return (
     <AppProvider>
-      <AppContent session={session} />
+      <AppContent session={activeSession} />
     </AppProvider>
   );
 }

@@ -524,11 +524,16 @@ export function useCurrentMember(
   email: string | null,
   displayName: string | null,
 ) {
-  const [member, setMember] = useState<Member | null>(null);
+  const [member, setMember] = useState<Member | null>(() => authId ? loadCache<Member | null>('member_' + authId, null) : null);
 
   useEffect(() => {
     let cancelled = false;
     if (!authId) { setMember(null); return; }
+    // Membre depuis le cache (immédiat, et indispensable hors-ligne).
+    const cached = loadCache<Member | null>('member_' + authId, null);
+    if (cached) setMember(cached);
+    // Hors-ligne : on s'en tient au cache (pas de requête ni de provisionnement).
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     (async () => {
       // 1) par auth_id (limit 1 : robuste même s'il restait des doublons)
       const byAuth = await supabase.from('members').select('*').eq('auth_id', authId).order('created_at').limit(1);
@@ -572,7 +577,7 @@ export function useCurrentMember(
         }
       }
 
-      if (!cancelled) setMember(data);
+      if (!cancelled && data) { setMember(data); saveCache('member_' + authId, data); }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

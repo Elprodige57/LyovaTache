@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../outils/supabase';
 import { signupSchema } from '../outils/validation/auth';
 import { isRateLimited, resetRateLimit } from '../outils/rate-limit';
+import { saveOfflineCredential } from '../outils/offlineAuth';
 import { AuthShell, champStyle } from './AuthShell';
 
 // Page d'inscription (création de compte).
@@ -29,8 +30,11 @@ export function Inscription({ onSwitch }: { onSwitch: () => void }) {
       if (error) setError(error.message);
       else {
         resetRateLimit(rlKey);
-        if (!data.session) setInfo('Compte créé ! Confirme ton email pour te connecter.');
-        // Si la confirmation email est désactivée, App bascule automatiquement (session créée).
+        if (data.session && data.user) {
+          await saveOfflineCredential(mail, name.trim() || mail.split('@')[0], data.user.id, password);
+        } else {
+          setInfo('Compte créé ! Confirme ton email pour te connecter.');
+        }
       }
     } catch {
       setError('Inscription impossible (serveur injoignable). Réessaie plus tard.');

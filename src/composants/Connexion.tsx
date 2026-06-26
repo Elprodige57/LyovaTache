@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../outils/supabase';
 import { loginSchema } from '../outils/validation/auth';
 import { isRateLimited, resetRateLimit } from '../outils/rate-limit';
+import { saveOfflineCredential } from '../outils/offlineAuth';
 import { AuthShell, champStyle } from './AuthShell';
 
 // Page de connexion (compte existant).
@@ -22,9 +23,13 @@ export function Connexion({ onSwitch }: { onSwitch: () => void }) {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: mail, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: mail, password });
       if (error) setError(error.message);
-      else resetRateLimit(rlKey); // App bascule via onAuthStateChange
+      else {
+        resetRateLimit(rlKey); // App bascule via onAuthStateChange
+        // Mémorise un vérificateur local du mot de passe → déverrouillage hors-ligne.
+        if (data.user) await saveOfflineCredential(mail, (data.user.user_metadata?.name as string) || mail.split('@')[0], data.user.id, password);
+      }
     } catch {
       setError('Connexion impossible (serveur injoignable). Réessaie ou continue en mode démo.');
     } finally {
