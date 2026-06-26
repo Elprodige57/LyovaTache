@@ -2,8 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { initBg } from './outils/apparence';
 
 document.title = 'Lyova Tâches';
+initBg(); // restaure le fond d'écran personnalisé
 
 // En dev : désinscrit tout ancien service worker + vide les caches (évite de servir une vieille version).
 if (import.meta.env.DEV && 'serviceWorker' in navigator) {

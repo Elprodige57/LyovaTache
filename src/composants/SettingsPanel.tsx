@@ -4,6 +4,7 @@ import { supabase } from '../outils/supabase';
 import { updateWorkspace } from '../modele/donnees';
 import { confirmDialog, promptDialog } from '../outils/dialog';
 import { exportBoard, importBoard, downloadJson } from '../outils/boardIO';
+import { BG_PRESETS, loadBg, applyBg, bgFromImageUrl, SOUND_PRESETS, loadSound, saveSound, playSound, type SoundId } from '../outils/apparence';
 import type { Board, Member, Workspace, Label } from '../modele/types';
 
 // Avantages indicatifs par plan (affichés sous le plan).
@@ -40,6 +41,14 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
   const fileRef = useRef<HTMLInputElement>(null);
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState('#5b50e8');
+  // Personnalisation (fond + sons)
+  const [bg, setBg] = useState(loadBg());
+  const [bgUrl, setBgUrl] = useState('');
+  const initSnd = loadSound();
+  const [soundId, setSoundId] = useState<SoundId>(initSnd.id);
+  const [soundUrl, setSoundUrl] = useState(initSnd.url);
+  const chooseBg = (value: string) => { setBg(value); applyBg(value); };
+  const chooseSound = (id: SoundId, url = soundUrl) => { setSoundId(id); saveSound(id, url); if (id !== 'off') playSound(id, url); };
 
   // Charge le nom d'espace et les préférences de notif existants
   useEffect(() => { if (workspace?.name) setWorkspaceName(workspace.name); }, [workspace?.name]);
@@ -218,6 +227,40 @@ export function SettingsPanel({ boards = [], members = [], labels = [], currentM
                     <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>Compact</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Fond d'écran */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Fond d'écran</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                  {BG_PRESETS.map(p => (
+                    <div key={p.id} onClick={() => chooseBg(p.value)} title={p.label}
+                      style={{ width: 44, height: 34, borderRadius: 8, cursor: 'pointer', background: p.swatch, border: bg === p.value ? '2px solid var(--accent)' : '1px solid var(--line2)' }} />
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input value={bgUrl} onChange={e => setBgUrl(e.target.value)} placeholder="…ou image par URL (https://…)" style={{ flex: 1, border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 11px', fontSize: 13, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
+                  <button onClick={() => { if (bgUrl.trim()) chooseBg(bgFromImageUrl(bgUrl.trim())); }} disabled={!bgUrl.trim()} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 9, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: bgUrl.trim() ? 1 : 0.5, fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>Appliquer</button>
+                </div>
+              </div>
+
+              {/* Son de notification */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)', marginBottom: 8 }}>Son de notification</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: soundId === 'custom' ? 8 : 0 }}>
+                  {SOUND_PRESETS.map(s => {
+                    const on = soundId === s.id;
+                    return (
+                      <span key={s.id} onClick={() => chooseSound(s.id)} style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 12px', borderRadius: 20, cursor: 'pointer', color: on ? 'var(--accent-ink)' : 'var(--sub2)', background: on ? 'var(--accent-soft)' : 'var(--panel)', border: `1px solid ${on ? 'var(--accent)' : 'var(--line2)'}` }}>{s.label}</span>
+                    );
+                  })}
+                </div>
+                {soundId === 'custom' && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input value={soundUrl} onChange={e => setSoundUrl(e.target.value)} onBlur={() => saveSound('custom', soundUrl)} placeholder="URL d'un son (.mp3 / .wav)" style={{ flex: 1, border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 11px', fontSize: 13, color: 'var(--ink)', background: 'var(--soft)', outline: 'none', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }} />
+                    <button onClick={() => { saveSound('custom', soundUrl); playSound('custom', soundUrl); }} style={{ background: 'transparent', color: 'var(--ink2)', border: '1px solid var(--line2)', borderRadius: 9, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'Hanken Grotesk', system-ui, sans-serif" }}>Tester</button>
+                  </div>
+                )}
               </div>
             </div>
           )}

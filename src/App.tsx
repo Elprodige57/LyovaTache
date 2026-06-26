@@ -28,6 +28,7 @@ import {
   useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess, acceptPendingInvitations, useLinkedTasks
 } from './modele/donnees';
 import { accessibleBoardIds, roleOf } from './outils/access';
+import { playCurrentSound } from './outils/apparence';
 import type { Task, Notification } from './modele/types';
 
 const MAIN_BOARD_ID = '00000000-0000-0000-0003-000000000001';
@@ -105,6 +106,14 @@ function AppContent({ session }: { session: Session | null }) {
   // Notifications de l'espace perso : celles ciblant le membre + les diffusions (member_id null)
   const myNotifications = notifications.filter(n => !n.member_id || n.member_id === currentMemberId);
 
+  // Son à l'arrivée d'une nouvelle notification non lue (pas au premier chargement).
+  const prevUnread = useRef(-1);
+  const myUnread = myNotifications.filter(n => !n.is_read).length;
+  useEffect(() => {
+    if (prevUnread.current >= 0 && myUnread > prevUnread.current) playCurrentSound();
+    prevUnread.current = myUnread;
+  }, [myUnread]);
+
   // Apply task overrides
   const effectiveTasks: Task[] = tasks.map(t => {
     const ov = app.taskOverrides[t.id];
@@ -155,7 +164,7 @@ function AppContent({ session }: { session: Session | null }) {
     <div style={{
       display: 'flex', height: '100vh', width: '100%', overflow: 'hidden',
       fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
-      background: 'var(--bg)', color: 'var(--ink)',
+      background: 'var(--lyova-bg, var(--bg))', color: 'var(--ink)',
       WebkitFontSmoothing: 'antialiased',
     }}>
       {/* Sidebar */}
