@@ -39,6 +39,8 @@ export function Kanban({ columns, tasks, members, linkedTasks = [] }: KanbanProp
   const [catVer, setCatVer] = useState(0);
   const [dragColId, setDragColId] = useState<string | null>(null);
 
+  // catVer force la relecture des catégories après un changement de statut de colonne.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const colCats = useMemo(() => loadColCats(), [catVer]);
 
   const cycleCat = (colId: string, name: string) => {
@@ -241,7 +243,7 @@ export function Kanban({ columns, tasks, members, linkedTasks = [] }: KanbanProp
                     </svg>
                   </div>
                   <div
-                    onClick={() => { setEditCol(col); setEditColName(col.name); setEditColColor(col.color); }}
+                    onClick={() => { const real = columns.find(c => c.id === col.id); if (real) { setEditCol(real); setEditColName(real.name); setEditColColor(real.color); } }}
                     title="Modifier la colonne"
                     style={{ cursor: 'pointer', color: 'var(--sub2)', padding: 2, borderRadius: 5, transition: 'all .1s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft2)'; e.currentTarget.style.color = 'var(--accent-ink)'; }}

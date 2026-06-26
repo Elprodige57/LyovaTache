@@ -67,7 +67,6 @@ function AppContent({ session }: { session: Session | null }) {
     session?.user.id ?? null,
     session?.user.email ?? null,
     (session?.user.user_metadata?.name as string | undefined) ?? null,
-    app.refreshCounter,
   );
   const currentMember = authedMember;
   const currentMemberId = currentMember?.id ?? '';

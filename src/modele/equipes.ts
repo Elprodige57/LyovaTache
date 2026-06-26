@@ -154,7 +154,7 @@ export function useDocumentLinks(targetType: LinkTarget, targetId: string | null
     supabase.from('document_links').select('id, documents(*)').eq('target_type', targetType).eq('target_id', targetId)
       .then(({ data }) => {
         if (data) {
-          setDocs((data as Array<{ id: string; documents: Document }>)
+          setDocs((data as unknown as Array<{ id: string; documents: Document }>)
             .filter(r => r.documents)
             .map(r => ({ ...r.documents, linkId: r.id })));
         }
@@ -260,13 +260,14 @@ export function useLinkedTasks(boardId: string | null, refreshKey = 0) {
       .eq('target_board_id', boardId)
       .then(({ data }) => {
         if (data) {
-          const ts = (data as Array<{ tasks: Record<string, unknown> | null }>)
-            .map((r) => r.tasks).filter(Boolean)
+          const ts = (data as unknown as Array<{ tasks: Record<string, unknown> | null }>)
+            .map((r) => r.tasks)
+            .filter((t): t is Record<string, unknown> => !!t)
             .map((t) => ({
-              ...(t as Task),
-              labels: ((t!.task_labels as Array<{ labels: Label }>) || []).map((x) => x.labels).filter(Boolean),
-              assignees: ((t!.task_assignees as Array<{ members: Member }>) || []).map((x) => x.members).filter(Boolean),
-              checklist_items: (t!.checklist_items as unknown[]) || [],
+              ...(t as unknown as Task),
+              labels: ((t.task_labels as Array<{ labels: Label }>) || []).map((x) => x.labels).filter(Boolean),
+              assignees: ((t.task_assignees as Array<{ members: Member }>) || []).map((x) => x.members).filter(Boolean),
+              checklist_items: (t.checklist_items as unknown[]) || [],
             })) as Task[];
           setTasks(ts);
         }

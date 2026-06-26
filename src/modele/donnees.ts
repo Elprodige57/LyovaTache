@@ -523,7 +523,6 @@ export function useCurrentMember(
   authId: string | null,
   email: string | null,
   displayName: string | null,
-  refreshKey = 0,
 ) {
   const [member, setMember] = useState<Member | null>(null);
 

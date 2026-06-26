@@ -166,6 +166,8 @@ function WordProcessor({ doc, onSave, onDelete, onNew }: { doc: Document; onSave
     document.execCommand('styleWithCSS', false, 'true');
     countWords(pageRef.current);
     // Sauvegarde au démontage (changement de document) si modifications non enregistrées.
+    // On lit volontairement la DERNIÈRE valeur des refs au moment du démontage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => { if (dirty.current) onSaveRef.current(latest.current.title, latest.current.html); };
   }, []);
 

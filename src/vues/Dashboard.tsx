@@ -56,7 +56,6 @@ export function Dashboard({ folders, members, allTasks }: DashboardProps) {
   };
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // Stats globales réelles
   let done = 0, progress = 0, todo = 0;
