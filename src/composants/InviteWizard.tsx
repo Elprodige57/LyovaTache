@@ -76,9 +76,11 @@ export function InviteWizard({ workspaceId, members, folders, teams, currentMemb
       await createInvitation(workspaceId, { email, role, scope, folderIds, boardIds, message, invitedBy: currentMemberId });
     }
     if (notify) {
-      const msg = `Accès accordé : ${SCOPE_LABELS[scope]} · rôle ${ROLE_LABELS[role]}`;
+      const inviter = members.find((m) => m.id === currentMemberId)?.name ?? 'Quelqu\'un';
+      const msg = `${inviter} t'a invité — ${SCOPE_LABELS[scope]} · rôle ${ROLE_LABELS[role]}`;
       for (const m of targetMembers.values()) {
-        await createNotification(workspaceId, msg, '👥', m.id);
+        if (m.id === currentMemberId) continue; // ne pas se notifier soi-même
+        await createNotification(workspaceId, msg, '✉️', m.id);
       }
     }
     setSaving(false);

@@ -25,7 +25,7 @@ import { MyTasks } from './vues/MyTasks';
 import { ArchivesView } from './vues/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
-  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess
+  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess, acceptPendingInvitations
 } from './modele/donnees';
 import { accessibleBoardIds, roleOf } from './outils/access';
 import type { Task, Notification } from './modele/types';
@@ -70,6 +70,14 @@ function AppContent({ session }: { session: Session | null }) {
   );
   const currentMember = authedMember;
   const currentMemberId = currentMember?.id ?? '';
+
+  // À la connexion, on accepte les invitations en attente adressées à cet email (rejoint l'espace + notif).
+  const didAcceptInv = useRef(false);
+  useEffect(() => {
+    if (didAcceptInv.current || !session?.user) return;
+    didAcceptInv.current = true;
+    acceptPendingInvitations(session.user.id, session.user.email ?? null).then(n => { if (n > 0) app.refreshAll(); });
+  }, [session, app]);
 
   // À la connexion, on bascule sur l'espace personnel du membre (sauf s'il a déjà choisi un espace).
   const didInitWs = useRef(false);

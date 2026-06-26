@@ -172,3 +172,37 @@ export async function unlinkDocument(linkId: string) {
   const { error } = await supabase.from('document_links').delete().eq('id', linkId);
   return { error };
 }
+
+// ── Acceptation des invitations par email ──
+// À la connexion, si des invitations « pending » visent l'email du compte :
+// on l'ajoute comme membre de l'espace (rôle/périmètre prévus), on marque l'invitation acceptée,
+// et on dépose une notification de bienvenue. Renvoie le nombre d'invitations acceptées.
+export async function acceptPendingInvitations(authId: string, email: string | null): Promise<number> {
+  if (!email) return 0;
+  const { data: invs } = await supabase.from('invitations').select('*').eq('email', email).eq('status', 'pending');
+  if (!invs || invs.length === 0) return 0;
+
+  let accepted = 0;
+  for (const inv of invs as Invitation[]) {
+    // Déjà membre de cet espace ?
+    const existing = await supabase.from('members').select('id').eq('workspace_id', inv.workspace_id).eq('auth_id', authId).limit(1);
+    let memberId = (existing.data?.[0] as { id: string } | undefined)?.id;
+
+    if (!memberId) {
+      const base = email.split('@')[0].replace(/[._-]+/g, ' ').trim() || 'Membre';
+      const initials = base.split(/\s+/).map((w) => w[0] ?? '').slice(0, 2).join('').toUpperCase() || '?';
+      const ins = await supabase.from('members')
+        .insert({ workspace_id: inv.workspace_id, name: base, initials, color: '#0ea5e9', role: 'Membre', email, auth_id: authId })
+        .select('id').single();
+      memberId = (ins.data as { id: string } | null)?.id;
+    }
+
+    if (memberId) {
+      await setMemberAccess(inv.workspace_id, memberId, { scope: inv.scope, role: inv.role, folderIds: inv.folder_ids, boardIds: inv.board_ids });
+      await supabase.from('invitations').update({ status: 'accepted' }).eq('id', inv.id);
+      await supabase.from('notifications').insert({ workspace_id: inv.workspace_id, member_id: memberId, icon: '✉️', message: `Tu as rejoint un espace via une invitation (rôle ${inv.role}).` });
+      accepted++;
+    }
+  }
+  return accepted;
+}
