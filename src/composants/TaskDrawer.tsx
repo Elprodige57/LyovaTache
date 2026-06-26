@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../controleur/AppContext';
-import { createNotification, addTaskMention, useDocumentLinks, linkDocument, unlinkDocument } from '../modele/donnees';
+import { createNotification, addTaskMention, useDocumentLinks, linkDocument, unlinkDocument, useAccessibleBoards, useTaskLinks, linkTaskToBoard, unlinkTaskLink } from '../modele/donnees';
 import { confirmDialog, promptDialog } from '../outils/dialog';
 import { MarkdownText } from '../outils/richtext';
 import type { Task, Column, Member, Label, Document } from '../modele/types';
@@ -28,6 +28,9 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDo
   const wsId = workspaceId || app.activeWorkspaceId;
   const linkedDocs = useDocumentLinks('task', task?.id, app.refreshCounter);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
+  const taskLinks = useTaskLinks(task?.id, app.refreshCounter);
+  const accessibleBoards = useAccessibleBoards(app.refreshCounter);
+  const [boardPickerOpen, setBoardPickerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState('');
   const [editingDesc, setEditingDesc] = useState('');
@@ -487,6 +490,48 @@ export function TaskDrawer({ task, columns, currentMember, allLabels = [], allDo
                       <span style={{ fontSize: 15 }}>{d.emoji}</span>
                       <span onClick={() => { app.openDoc(d.id); app.goTo('documents'); }} style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title}</span>
                       <span onClick={async () => { await unlinkDocument(d.linkId); app.refreshAll(); }} title="Délier" style={{ cursor: 'pointer', color: 'var(--sub2)', fontSize: 16 }}>×</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Liaison inter-bureaux */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 11 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--sub2)' }}>Liée à des bureaux</span>
+                <div style={{ position: 'relative', marginLeft: 'auto' }}>
+                  <span onClick={() => setBoardPickerOpen(o => !o)} style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--accent-ink)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" /><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" /></svg> Lier à un bureau
+                  </span>
+                  {boardPickerOpen && (
+                    <>
+                      <div onClick={() => setBoardPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+                      <div style={{ position: 'absolute', top: 24, right: 0, zIndex: 61, width: 280, maxHeight: 280, overflowY: 'auto', background: 'var(--panel)', border: '1px solid var(--line2)', borderRadius: 10, boxShadow: 'var(--shadow-md)', padding: '5px 0' }}>
+                        {accessibleBoards.filter(b => b.id !== task.board_id && !taskLinks.some(l => l.boardId === b.id)).map(b => (
+                          <div key={b.id} onMouseDown={async () => { await linkTaskToBoard(task.id, b.id); setBoardPickerOpen(false); app.refreshAll(); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 12px', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--hover)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                            <span style={{ width: 9, height: 9, borderRadius: '50%', background: b.color, flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
+                              <div style={{ fontSize: 10.5, color: 'var(--sub2)' }}>{b.workspaceName}{b.folderName ? ' · ' + b.folderName : ''}</div>
+                            </div>
+                          </div>
+                        ))}
+                        {accessibleBoards.filter(b => b.id !== task.board_id && !taskLinks.some(l => l.boardId === b.id)).length === 0 && <div style={{ padding: '8px 12px', fontSize: 12, color: 'var(--sub2)' }}>Aucun autre bureau accessible.</div>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              {taskLinks.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: 'var(--sub2)' }}>Pas encore liée. Lie cette tâche à un autre Bureau : elle apparaîtra dans sa colonne « 🔗 Liée ».</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {taskLinks.map(l => (
+                    <div key={l.linkId} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 9 }}>
+                      <span style={{ fontSize: 14 }}>🔗</span>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.boardName}</span>
+                      <span onClick={async () => { await unlinkTaskLink(l.linkId); app.refreshAll(); }} title="Délier" style={{ cursor: 'pointer', color: 'var(--sub2)', fontSize: 16 }}>×</span>
                     </div>
                   ))}
                 </div>

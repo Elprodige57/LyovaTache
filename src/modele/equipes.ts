@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../outils/supabase';
 import { loadCache, saveCache } from '../outils/cache';
 import { cleanInput } from '../outils/sanitizer';
-import type { Member, MemberAccess, AccessScope, AccessRole, Invitation, Team, Document } from './types';
+import type { Member, MemberAccess, AccessScope, AccessRole, Invitation, Team, Document, Task, Label } from './types';
 
 // ── Équipes (services) ──
 export function useTeams(workspaceId: string | undefined, refreshKey = 0) {
@@ -205,4 +205,82 @@ export async function acceptPendingInvitations(authId: string, email: string | n
     }
   }
   return accepted;
+}
+
+// ── Liaison de tâches inter-bureaux ──
+export interface AccessibleBoard { id: string; name: string; color: string; folderName: string; workspaceName: string; }
+
+// Tous les Bureaux auxquels l'utilisateur a accès (la RLS filtre déjà à ses espaces).
+export function useAccessibleBoards(refreshKey = 0) {
+  const [boards, setBoards] = useState<AccessibleBoard[]>([]);
+  useEffect(() => {
+    supabase.from('boards')
+      .select('id, name, color, deleted_at, folder:folders!inner(name, workspace:workspaces(name))')
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        if (data) {
+          setBoards((data as Array<Record<string, unknown>>).map((b) => {
+            const f = b.folder as { name?: string; workspace?: { name?: string } } | undefined;
+            return { id: b.id as string, name: b.name as string, color: b.color as string, folderName: f?.name ?? '', workspaceName: f?.workspace?.name ?? '' };
+          }));
+        }
+      });
+  }, [refreshKey]);
+  return boards;
+}
+
+export interface TaskLink { linkId: string; boardId: string; boardName: string; }
+
+// Bureaux auxquels une tâche est liée (vue depuis la tâche).
+export function useTaskLinks(taskId: string | null | undefined, refreshKey = 0) {
+  const [links, setLinks] = useState<TaskLink[]>([]);
+  useEffect(() => {
+    if (!taskId) { setLinks([]); return; }
+    supabase.from('task_links').select('id, target_board_id, boards(name)').eq('task_id', taskId)
+      .then(({ data }) => {
+        if (data) {
+          setLinks((data as Array<Record<string, unknown>>).map((r) => ({
+            linkId: r.id as string,
+            boardId: r.target_board_id as string,
+            boardName: (r.boards as { name?: string } | undefined)?.name ?? 'Bureau',
+          })));
+        }
+      });
+  }, [taskId, refreshKey]);
+  return links;
+}
+
+// Tâches liées À un Bureau (pour la colonne « Liée »), enrichies pour l'affichage des cartes.
+export function useLinkedTasks(boardId: string | null, refreshKey = 0) {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  useEffect(() => {
+    if (!boardId) { setTasks([]); return; }
+    supabase.from('task_links')
+      .select('tasks(*, task_labels(label_id, labels(*)), task_assignees(member_id, members(*)), checklist_items(*))')
+      .eq('target_board_id', boardId)
+      .then(({ data }) => {
+        if (data) {
+          const ts = (data as Array<{ tasks: Record<string, unknown> | null }>)
+            .map((r) => r.tasks).filter(Boolean)
+            .map((t) => ({
+              ...(t as Task),
+              labels: ((t!.task_labels as Array<{ labels: Label }>) || []).map((x) => x.labels).filter(Boolean),
+              assignees: ((t!.task_assignees as Array<{ members: Member }>) || []).map((x) => x.members).filter(Boolean),
+              checklist_items: (t!.checklist_items as unknown[]) || [],
+            })) as Task[];
+          setTasks(ts);
+        }
+      });
+  }, [boardId, refreshKey]);
+  return tasks;
+}
+
+export async function linkTaskToBoard(taskId: string, targetBoardId: string) {
+  const { error } = await supabase.from('task_links').insert({ task_id: taskId, target_board_id: targetBoardId });
+  return { error };
+}
+
+export async function unlinkTaskLink(linkId: string) {
+  const { error } = await supabase.from('task_links').delete().eq('id', linkId);
+  return { error };
 }

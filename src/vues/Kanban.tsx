@@ -16,11 +16,12 @@ interface KanbanProps {
   columns: Column[];
   tasks: Task[];
   members: Member[];
+  linkedTasks?: Task[];
 }
 
 type DisplayCol = { id: string; name: string; color: string; wip_limit: number; kind: 'status' | 'priority' | 'assignee' };
 
-export function Kanban({ columns, tasks, members }: KanbanProps) {
+export function Kanban({ columns, tasks, members, linkedTasks = [] }: KanbanProps) {
   const app = useApp();
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
@@ -365,6 +366,38 @@ export function Kanban({ columns, tasks, members }: KanbanProps) {
             </div>
           );
         })}
+
+        {/* Colonne spéciale : tâches liées depuis d'autres bureaux */}
+        {linkedTasks.length > 0 && (
+          <div style={{ width: 'var(--col-w)', flexShrink: 0, background: 'var(--panel2)', border: '1px dashed var(--accent)', borderRadius: 14, maxHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: 'var(--col-head-pad)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                <span style={{ fontSize: 14 }}>🔗</span>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>Liée</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--sub2)', background: 'var(--soft2)', borderRadius: 6, padding: '1px 7px', fontFamily: "'JetBrains Mono', monospace" }}>{linkedTasks.length}</span>
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--sub2)', marginTop: 6 }}>Tâches d'autres bureaux liées ici</div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '3px 8px var(--card-gap)', display: 'flex', flexDirection: 'column', gap: 'var(--card-gap)' }}>
+              {linkedTasks.map(t => (
+                <div key={t.id} onClick={() => app.openTask(t.id)} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', boxShadow: 'var(--shadow)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: ({ urgent: '#ef4444', high: '#f97316', medium: '#6366f1', low: '#94a3b8' } as Record<string, string>)[t.priority] ?? '#94a3b8' }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-ink)', background: 'var(--accent-soft)', borderRadius: 5, padding: '1px 6px' }}>🔗 liée</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{t.title}</div>
+                  {t.assignees && t.assignees.length > 0 && (
+                    <div style={{ display: 'flex', marginTop: 6 }}>
+                      {t.assignees.slice(0, 3).map(a => (
+                        <span key={a.id} style={{ width: 20, height: 20, borderRadius: '50%', background: a.color, color: '#fff', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: -4, border: '2px solid var(--panel)' }}>{a.initials}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Add column (mode Statut uniquement) */}
         {app.groupMode === 'status' && (addingCol ? (

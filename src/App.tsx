@@ -25,7 +25,7 @@ import { MyTasks } from './vues/MyTasks';
 import { ArchivesView } from './vues/Archives';
 import {
   useWorkspace, useMembers, useFolders, useLabels,
-  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess, acceptPendingInvitations
+  useBoard, useColumns, useTasks, useTask, useAutomations, useDocuments, useAllTasks, useCurrentMember, useNotifications, useWorkspaces, useMemberAccess, acceptPendingInvitations, useLinkedTasks
 } from './modele/donnees';
 import { accessibleBoardIds, roleOf } from './outils/access';
 import type { Task, Notification } from './modele/types';
@@ -56,6 +56,7 @@ function AppContent({ session }: { session: Session | null }) {
     app.refreshCounter
   );
   const { task: selectedTask } = useTask(app.selectedTaskId, app.refreshCounter);
+  const linkedTasks = useLinkedTasks(app.screen === 'board' ? activeBoardId : null, app.refreshCounter);
 
   // Tâches de tous les Bureaux (vue « Mes tâches »)
   const allBoards = folders.flatMap(f => f.boards ?? []);
@@ -240,7 +241,7 @@ function AppContent({ session }: { session: Session | null }) {
           )}
 
           {isBoard && app.boardView === 'kanban' && (
-            <Kanban columns={columns} tasks={[...effectiveTasks, ...app.pendingTasks.filter(p => p.board_id === activeBoardId)]} members={members} />
+            <Kanban columns={columns} tasks={[...effectiveTasks, ...app.pendingTasks.filter(p => p.board_id === activeBoardId)]} members={members} linkedTasks={linkedTasks} />
           )}
 
           {isBoard && app.boardView === 'agenda' && (
